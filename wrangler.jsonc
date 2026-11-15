@@ -10,12 +10,7 @@
     "run_worker_first": ["/api/*"]
   },
   "vars": {
-    "FRONTEND_ORIGIN": "",
-    "DAILY_QUESTION_LIMIT": "20",
-    "MINUTE_QUESTION_LIMIT": "4"
-  },
-  "durable_objects": {
-    "bindings": [{ "name": "COURSE_QUOTA", "class_name": "CourseQuota" }]
+    "FRONTEND_ORIGIN": ""
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CourseQuota"] }],
   "observability": { "enabled": false }

@@ -12,7 +12,7 @@
 2. 能使用 Workers 的 Cloudflare 帳號。
 3. 在 Cloudflare Worker 設定 `GEMINI_API_KEY` 為**秘密值**。未設好時問答不會呼叫 API，教材仍可播放。學生不需要 CAPTCHA 或登入。
 
-維護者可在 GitHub 連接 Cloudflare Workers Builds，或在本機登入 Wrangler 後從本資料夾執行 `npx wrangler deploy`。根目錄是 Workers 專案，只有 `public/` 會對網站訪客提供。請勿將本機編輯器、病例來源或任何金鑰加入 GitHub。預設整個課程共用每日 20 次（UTC 換日，台灣時間上午 8 點）、每分鐘 4 次的 Gemini 請求上限，可依 AI Studio 額度調整；離題拒答不計入。沒有使用者驗證，因此任何能開啟網站的人都可能消耗共用額度。這不是服務商費用硬上限。
+維護者可在 GitHub 連接 Cloudflare Workers Builds，或在本機登入 Wrangler 後從本資料夾執行 `npx wrangler deploy`。根目錄是 Workers 專案，只有 `public/` 會對網站訪客提供。請勿將本機編輯器、病例來源或任何金鑰加入 GitHub。網站不另設每分鐘或每日問答上限；Google 回傳用量限制時只顯示提示，不自動重試。沒有使用者驗證，因此任何能開啟網站的人都可能消耗共用額度；請在 AI Studio 確認你的專案方案。
 
 ## 若選擇 GitHub Pages 網址
 
@@ -20,12 +20,12 @@
 
 - 在 `public/study-config.js` 設 Cloudflare Worker 的 HTTPS 網址，例如 `https://radiology-student-ai.example.workers.dev`。
 - 在 `wrangler.jsonc` 的 `FRONTEND_ORIGIN` 設學生端網域來源，例如 `https://teacher.github.io`，不要包含 repo 路徑。
-- Worker 會核對瀏覽器來源並限制全站用量；瀏覽器來源檢查不是身分驗證，也不會把 Gemini 金鑰放前端。
+- Worker 會核對瀏覽器來源；瀏覽器來源檢查不是身分驗證，也不會把 Gemini 金鑰放前端。
 
 ## 資料與試用範圍
 
-問答限定在來自 13 張投影片的通用教學段落。只有通過本機程式規則的問題與選出的段落才會送 Gemini；不會把病例報告、媒體或本機編輯內容放入請求。回覆附經程式核對的原文及來源頁；不能保證 AI 每次解釋都正確。頁面會提示免費方案的資料處理風險；本版不儲存提問或回覆，Cloudflare 只保存共用用量計數。不要輸入病人或個人資訊。先僅供成年學員的概念複習，不用於臨床診療。
+可問教材與一般知識。教材題會參考從 13 張投影片選出的通用教學段落，並附經程式核對的原文與來源頁；其他回答會標示「一般知識（非教材引用）」，不搜尋網路。不會把病例報告、媒體或本機編輯內容放入請求。頁面會提示免費方案的資料處理風險；本版不儲存提問或回覆，不再以 Cloudflare 計數。不要輸入病人或個人資訊。先僅供成年學員，不用於臨床診療。
 
-驗收：`node --test server/worker.test.mjs` 在無金鑰狀態用模擬服務測試。正式啟用後再用「EDH 和 SDH 有何不同？」及「請教我做蛋糕」確認有來源與離題拒答，並試問卷與影片。
+驗收：`node --test server/worker.test.mjs` 在無金鑰狀態用模擬服務測試。正式啟用後再測「EDH 和 SDH 有何不同？」（教材引用）與「什麼是光合作用？」（一般知識），並試問卷與影片。
 
 官方文件：[GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)、[Cloudflare Workers Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)、[Google Gemini 資料條款](https://ai.google.dev/gemini-api/terms)。

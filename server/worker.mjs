@@ -2,7 +2,6 @@ import {createStudyAI} from './study-ai.mjs';
 import pages from './corpus.json' with {type:'json'};
 
 const bad=(status,message)=>Object.assign(new Error(message),{status});
-const compact=(n,fallback,max)=>{const x=Number(n);return Number.isInteger(x)&&x>0&&x<=max?x:fallback;};
 const json=(data,status,headers)=>Response.json(data,{status,headers});
 
 async function readJSON(request){
@@ -19,26 +18,9 @@ async function readJSON(request){
  }finally{await reader.cancel().catch(()=>{});}
 }
 
-export function nextQuota(previous,now,dayLimit,minuteLimit){
- const day=Math.floor(now/86400000),minute=Math.floor(now/60000);
- const daily=previous?.day===day?previous.daily:0,burst=previous?.minute===minute?previous.burst:0;
- return daily>=dayLimit||burst>=minuteLimit?null:{day,minute,daily:daily+1,burst:burst+1};
-}
-
+// Retain the migrated class without a binding so deployment does not delete its storage.
 export class CourseQuota {
- constructor(ctx,env){this.storage=ctx.storage;this.env=env;}
- fetch(){
-  const day=compact(this.env.DAILY_QUESTION_LIMIT,20,1000),minute=compact(this.env.MINUTE_QUESTION_LIMIT,4,60);
-  const next=this.storage.transactionSync(()=>{
-   const sql=this.storage.sql;
-   sql.exec('CREATE TABLE IF NOT EXISTS quota (id INTEGER PRIMARY KEY, day INTEGER, minute INTEGER, daily INTEGER, burst INTEGER)');
-   const prior=sql.exec('SELECT day, minute, daily, burst FROM quota WHERE id = 1').toArray()[0];
-   const increment=nextQuota(prior,Date.now(),day,minute);
-   if(increment)sql.exec('INSERT OR REPLACE INTO quota VALUES (1, ?, ?, ?, ?)',increment.day,increment.minute,increment.daily,increment.burst);
-   return increment;
-  });
-  return new Response(null,{status:next?204:429});
- }
+ fetch(){return new Response(null,{status:410});}
 }
 
 export function createWorker(fetcher=(...args)=>globalThis.fetch(...args)){
@@ -54,22 +36,14 @@ export function createWorker(fetcher=(...args)=>globalThis.fetch(...args)){
    if(origin!==frontend||url.pathname!=='/api/study/ask')return reply({error:'不允許的請求。'},403);
    return new Response(null,{status:204,headers:{...headers,'Access-Control-Allow-Methods':'POST','Access-Control-Allow-Headers':'Content-Type'}});
   }
-  const enabled=Boolean(env.GEMINI_API_KEY&&env.COURSE_QUOTA);
+  const enabled=Boolean(env.GEMINI_API_KEY);
   if(url.pathname==='/api/study/config'&&request.method==='GET')return reply({enabled});
   if(url.pathname!=='/api/study/ask'||request.method!=='POST')return reply({error:'找不到功能。'},404);
   if(!enabled)return reply({error:'問 AI 尚未啟用。'},503);
   if(origin!==frontend)return reply({error:'請從課程網頁提問。'},403);
   try{
    const input=await readJSON(request);
-   const ask=createStudyAI({
-    pages,apiKey:env.GEMINI_API_KEY,provider:'gemini',fetcher,
-    async beforeSend(){
-     const quota=env.COURSE_QUOTA.get(env.COURSE_QUOTA.idFromName('course'));
-     const permit=await quota.fetch('https://course-quota.internal/consume').catch(()=>{throw bad(503,'問答用量服務暫時無法使用。');});
-     if(permit.status===429)throw bad(429,'課程問答暫時達到用量上限，請稍後再試。');
-     if(permit.status!==204)throw bad(503,'問答暫時無法使用。');
-    }
-   });
+   const ask=createStudyAI({pages,apiKey:env.GEMINI_API_KEY,provider:'gemini',fetcher});
    return reply(await ask(input));
   }catch(e){return reply({error:e.status?e.message:'目前無法回答，請稍後再試。'},e.status||502);}
  }};
