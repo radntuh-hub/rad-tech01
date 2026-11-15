@@ -1,0 +1,386 @@
+{
+  "course": "07882ea7b29826d04c33ac9f4ed290a2a5e49ba788c76cda59db7da4ba95f4c5",
+  "pages": {
+    "sinus/1": [],
+    "sinus/2": [],
+    "sinus/3": [
+      [
+        "sinus-1",
+        "sinus-2"
+      ]
+    ],
+    "sinus/4": [],
+    "sinus/5": [
+      [
+        "sinus-1"
+      ],
+      [
+        "sinus-2"
+      ]
+    ],
+    "sinus/6": [],
+    "sinus/7": [],
+    "sinus/8": [],
+    "sinus/9": [],
+    "sinus/10": [],
+    "npc/1": [
+      [
+        "npc-1"
+      ]
+    ],
+    "npc/2": [
+      [
+        "npc-4"
+      ]
+    ],
+    "npc/3": [
+      [
+        "npc-5",
+        "npc-2",
+        "npc-6",
+        "npc-3",
+        "npc-1",
+        "npc-4"
+      ]
+    ],
+    "npc/4": [],
+    "npc/5": [
+      [
+        "npc-2"
+      ],
+      [
+        "npc-3"
+      ]
+    ],
+    "npc/6": [],
+    "npc/7": [
+      [
+        "npc-3",
+        "npc-6"
+      ]
+    ],
+    "npc/8": [
+      [
+        "npc-4",
+        "npc-2"
+      ]
+    ],
+    "npc/9": [],
+    "npc/10": [],
+    "infection/1": [],
+    "infection/2": [],
+    "infection/3": [
+      [
+        "infection-1",
+        "infection-2",
+        "infection-3"
+      ]
+    ],
+    "infection/4": [
+      [
+        "infection-2",
+        "infection-3"
+      ]
+    ],
+    "infection/5": [
+      [
+        "infection-1"
+      ],
+      [
+        "infection-3"
+      ]
+    ],
+    "infection/6": [],
+    "infection/7": [
+      [
+        "infection-1"
+      ]
+    ],
+    "infection/8": [
+      [
+        "infection-2",
+        "infection-3"
+      ]
+    ],
+    "infection/9": [],
+    "infection/10": [],
+    "ranula/1": [],
+    "ranula/2": [],
+    "ranula/3": [
+      [
+        "ranula-1",
+        "ranula-2"
+      ]
+    ],
+    "ranula/4": [
+      [
+        "ranula-2"
+      ]
+    ],
+    "ranula/5": [
+      [
+        "ranula-1"
+      ],
+      [
+        "ranula-2"
+      ]
+    ],
+    "ranula/6": [
+      [
+        "ranula-2"
+      ]
+    ],
+    "ranula/7": [],
+    "ranula/8": [],
+    "ranula/9": [],
+    "ranula/10": [],
+    "edh/1": [],
+    "edh/2": [
+      [
+        "edh-1",
+        "edh-2"
+      ]
+    ],
+    "edh/3": [
+      [
+        "edh-1",
+        "edh-2"
+      ]
+    ],
+    "edh/4": [
+      [
+        "edh-3",
+        "edh-1"
+      ]
+    ],
+    "edh/5": [
+      [
+        "edh-1"
+      ],
+      [
+        "edh-2"
+      ]
+    ],
+    "edh/6": [
+      [
+        "edh-1"
+      ]
+    ],
+    "edh/7": [],
+    "edh/8": [],
+    "edh/9": [],
+    "edh/10": [],
+    "sdh/1": [],
+    "sdh/2": [
+      [
+        "sdh-1",
+        "sdh-3"
+      ]
+    ],
+    "sdh/3": [
+      [
+        "sdh-1",
+        "sdh-3"
+      ]
+    ],
+    "sdh/4": [
+      [
+        "sdh-2",
+        "sdh-1"
+      ]
+    ],
+    "sdh/5": [
+      [
+        "sdh-1"
+      ],
+      [
+        "sdh-3"
+      ]
+    ],
+    "sdh/6": [
+      [
+        "sdh-1"
+      ],
+      [
+        "sdh-4"
+      ]
+    ],
+    "sdh/7": [],
+    "sdh/8": [],
+    "sdh/9": [],
+    "sdh/10": [],
+    "contusion/1": [],
+    "contusion/2": [
+      [
+        "contusion-1",
+        "contusion-2"
+      ]
+    ],
+    "contusion/3": [
+      [
+        "contusion-1"
+      ]
+    ],
+    "contusion/4": [
+      [
+        "contusion-5"
+      ],
+      [
+        "contusion-6"
+      ]
+    ],
+    "contusion/5": [
+      [
+        "contusion-1"
+      ],
+      [
+        "contusion-5",
+        "contusion-6",
+        "contusion-4",
+        "contusion-3"
+      ]
+    ],
+    "contusion/6": [
+      [
+        "contusion-4",
+        "contusion-1"
+      ]
+    ],
+    "contusion/7": [
+      [
+        "contusion-1"
+      ],
+      [
+        "contusion-3"
+      ]
+    ],
+    "contusion/8": [],
+    "contusion/9": [],
+    "contusion/10": [],
+    "dai/1": [],
+    "dai/2": [
+      [
+        "dai-1"
+      ],
+      [
+        "dai-7"
+      ]
+    ],
+    "dai/3": [
+      [
+        "dai-3",
+        "dai-4"
+      ]
+    ],
+    "dai/4": [
+      [
+        "dai-2",
+        "dai-3",
+        "dai-4"
+      ]
+    ],
+    "dai/5": [
+      [
+        "dai-3",
+        "dai-2"
+      ],
+      [
+        "dai-4"
+      ]
+    ],
+    "dai/6": [
+      [
+        "dai-3",
+        "dai-4",
+        "dai-2"
+      ]
+    ],
+    "dai/7": [
+      [
+        "dai-3"
+      ],
+      [
+        "dai-5",
+        "dai-6"
+      ]
+    ],
+    "dai/8": [],
+    "dai/9": [],
+    "dai/10": [],
+    "cspine/1": [],
+    "cspine/2": [],
+    "cspine/3": [
+      [
+        "cspine-2",
+        "cspine-1"
+      ]
+    ],
+    "cspine/4": [
+      [
+        "cspine-3",
+        "cspine-4"
+      ]
+    ],
+    "cspine/5": [
+      [
+        "cspine-2",
+        "cspine-1"
+      ],
+      [
+        "cspine-3",
+        "cspine-4",
+        "cspine-5"
+      ]
+    ],
+    "cspine/6": [
+      [
+        "cspine-5",
+        "cspine-3"
+      ]
+    ],
+    "cspine/7": [],
+    "cspine/8": [],
+    "cspine/9": [],
+    "cspine/10": []
+  },
+  "frames": {
+    "contusion-1": 32,
+    "contusion-2": 148,
+    "contusion-3": 31,
+    "contusion-4": 30,
+    "contusion-5": 33,
+    "contusion-6": 35,
+    "cspine-1": 32,
+    "cspine-2": 35,
+    "cspine-3": 11,
+    "cspine-4": 11,
+    "cspine-5": 24,
+    "dai-1": 72,
+    "dai-2": 90,
+    "dai-3": 30,
+    "dai-4": 56,
+    "dai-5": 30,
+    "dai-6": 130,
+    "dai-7": 36,
+    "edh-1": 32,
+    "edh-2": 38,
+    "edh-3": 64,
+    "infection-1": 100,
+    "infection-2": 74,
+    "infection-3": 65,
+    "npc-1": 29,
+    "npc-2": 160,
+    "npc-3": 30,
+    "npc-4": 51,
+    "npc-5": 160,
+    "npc-6": 30,
+    "ranula-1": 86,
+    "ranula-2": 108,
+    "sdh-1": 72,
+    "sdh-2": 144,
+    "sdh-3": 41,
+    "sdh-4": 36,
+    "sinus-1": 221,
+    "sinus-2": 100
+  }
+}

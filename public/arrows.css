@@ -1,0 +1,14 @@
+.video-stage { position: relative; }
+.teaching-arrow-layer, .teacher-arrow-hit { position: absolute; }
+.teaching-arrow-layer { pointer-events: none; overflow: visible; z-index: 2; }
+.teaching-arrow-layer[hidden], .teacher-arrow-hit[hidden] { display: none; }
+.teacher-arrow-hit { cursor: crosshair; touch-action: none; z-index: 3; outline: 2px dashed #28aa99; outline-offset: -2px; }
+.teacher-arrow-controls { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 8px 0; }
+.teacher-arrow-controls label { display: inline-flex; gap: 4px; align-items: center; }
+.teacher-arrow-controls input[type=number] { width: 5em; }
+.teacher-arrow-controls select { max-width: min(100%, 18rem); }
+.teacher-arrow-settings { display: contents; }
+.teacher-arrow-settings[hidden] { display: none; }
+.teacher-arrow-status { padding: 4px 12px; color: #e3f8f3; background: #24554e; font-size: 14px; }
+.teacher-arrow-status[data-error] { background: #792e35; }
+.header-actions:has([data-teacher-action]) { flex-wrap: wrap; }

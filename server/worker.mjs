@@ -1,5 +1,7 @@
 import {createStudyAI} from './study-ai.mjs';
 import pages from './course-index.json' with {type:'json'};
+import {teacherArrows} from './teacher-arrows.mjs';
+export {ArrowWorkspace} from './teacher-arrows.mjs';
 
 const bad=(status,message)=>Object.assign(new Error(message),{status});
 const json=(data,status,headers)=>Response.json(data,{status,headers});
@@ -26,6 +28,8 @@ export class CourseQuota {
 export function createWorker(fetcher=(...args)=>globalThis.fetch(...args)){
  return {async fetch(request,env){
   const url=new URL(request.url);
+  if(url.pathname==='/teacher'||url.pathname.startsWith('/teacher/')||url.pathname.startsWith('/api/arrows/'))
+   return teacherArrows(request,env);
   if(!url.pathname.startsWith('/api/'))return env.ASSETS.fetch(request);
   const origin=request.headers.get('Origin'),frontend=env.FRONTEND_ORIGIN||url.origin;
   const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',Vary:'Origin'};

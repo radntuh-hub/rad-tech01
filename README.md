@@ -35,3 +35,13 @@
 修改投影片後，檢查 `server/course-excerpts.tsv`（原有摘錄在 `server/corpus.json`），只加入可提供給 Gemini 的教學摘錄。用 `python3 scripts/build-course-index.py` 重新產生索引，再用 `node --test server/*.test.mjs` 驗證 HTML、索引、問答與問卷。正式站可試問「教材的 throat symptoms 或 mass 是在哪一頁？」。
 
 官方文件：[GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)、[Cloudflare Workers Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)、[Google Gemini 資料條款](https://ai.google.dev/gemini-api/terms)。
+
+## 教師影片標註
+
+網路教師入口為 `/teacher/`。教師密碼可編輯共用草稿；管理者密碼另外提供發布與復原上一版。學生不需登入，只有重新載入後才會讀到最近一次已確認發布的箭頭。教師正在編輯的內容不公開；若另一位教師先更新，請先下載自己的標註再整理衝突。兩種角色目前各使用一組密碼，未建立個別帳號。
+
+部署使用 SQLite Durable Object，不把草稿寫回靜態 HTML。維護者用 `node annotation/provision.mjs 私人新資料夾` 建立兩組高強度密碼與雜湊。只將 `teacher-secrets.json` 透過 Wrangler 的 `deploy --secrets-file` 設為秘密值，不要將它或登入資料放進 GitHub、網站資源或教師 ZIP。密碼輪換後舊登入會失效。影片或投影片影片配置改動時，先備份及核對標註，再用 `node annotation/build.mjs manifest` 更新驗證清單。
+
+從這個資料夾執行 `node annotation/build.mjs teacher 輸出資料夾`，產生獨立離線教師包。輸出名稱須為新資料夾。教師用 Chrome 或 Edge 開啟 `開啟教師標註.html`，按影片下方的「畫箭頭」，完成後按「下載標註」。只需收回 JSON，無需收回媒體。
+
+收件後可執行 `node annotation/build.mjs preview 預覽資料夾 標註1.json 標註2.json`。預覽僅播放、不包含編輯或雲端問答，並核對影片內容與影格、頁面位置；同一支箭頭若有不同版本會拒絕覆蓋。此步驟不部署、不改寫既有學生版。若要發布，先確認箭尖與每一段顯示範圍，再將核定標註與播放層整合到學生版，保留 AI 與問卷。

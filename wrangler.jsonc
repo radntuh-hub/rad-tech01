@@ -7,11 +7,15 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/teacher", "/teacher/*"]
   },
   "vars": {
     "FRONTEND_ORIGIN": ""
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CourseQuota"] }],
+  "durable_objects": { "bindings": [{ "name": "ARROWS", "class_name": "ArrowWorkspace" }] },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["CourseQuota"] },
+    { "tag": "v2-arrows", "new_sqlite_classes": ["ArrowWorkspace"] }
+  ],
   "observability": { "enabled": false }
 }
