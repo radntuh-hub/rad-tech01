@@ -109,7 +109,24 @@ test('Course wording without an explicit restriction still gets a labeled genera
  assert.match(result.answer,/光合作用/);
  assert.deepEqual(calls,['model']);
 });
-test('Encephalomalacia questions keep the Contusion lesson and the extra classification separate',async()=>{
+test('Encephalomalacia classification questions compare the actual lesson without inventing subtypes',async()=>{
+ const {env,calls,worker}=fixture();
+ for(const question of [
+  'Encephalomalacia 有哪幾種？請把不同分類和教材中提到的內容一起比較看看。',
+  '教材怎麼分腦軟化的類型？',
+  'Which types of encephalomalacia are in these slides?'
+ ]){
+  const result=await (await worker.fetch(req({question,current:'edh'}),env)).json();
+  assert.match(result.intro,/按病程階段教/);
+  assert.deepEqual(result.blocks.map(block=>block.source),['contusion/7','contusion/8']);
+  assert.match(result.supplement,/沒有足夠資料替本例判定病理亞型/);
+ }
+ const result=await (await worker.fetch(req({question:'請只依教材說明腦軟化有哪幾種。'}),env)).json();
+ assert.equal(result.kind,'answer');
+ assert.equal(result.supplement,undefined);
+ assert.deepEqual(calls,[]);
+});
+test('Open-ended Encephalomalacia questions retrieve the Contusion lesson for the model',async()=>{
  const {env}=fixture();let calls=0;
  const worker=createWorker(async(_,options)=>{
   calls++;
@@ -126,9 +143,9 @@ test('Encephalomalacia questions keep the Contusion lesson and the extra classif
   }]});
  });
  for(const question of [
-  'Encephalomalacia 有哪幾種？請把不同分類和教材中提到的內容一起比較看看。',
+  'Encephalomalacia 是什麼意思？學習時要怎麼理解這個字在教材的脈絡？',
   '請問教材怎麼介紹腦軟化？可以對照整理這個名詞在課程中的重點嗎？',
-  'How does the course explain encephalomalacia and which subtypes should students learn?'
+  'How does the course explain encephalomalacia and what should students look for in the lesson?'
  ]){
   const result=await (await worker.fetch(req({question,current:'edh'}),env)).json();
   assert.equal(result.kind,'answer');

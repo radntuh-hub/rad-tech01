@@ -47,6 +47,21 @@ function bleedingOverview(pages){
  return {kind:'answer',intro:'這套教材主要介紹四項外傷性顱內出血相關類型或病灶。',blocks};
 }
 
+function encephalomalaciaOverview(pages,courseOnly){
+ const outline=[
+  ['7','在這個 Contusion / SAH 病例中，教材對照初期的出血與約兩個月後的 CT，用 Encephalomalacia 說明舊傷後的 tissue loss。'],
+  ['8','這一頁用病程時間軸整理影像變化，提醒學生把晚期影像和臨床功能分開評估、一起理解。']
+ ];
+ const blocks=outline.map(([number,answer])=>{
+  const page=pages.find(p=>p.case==='contusion'&&p.page===number);
+  const evidence=page?.parts.find(p=>/encephalomalacia/i.test(p));
+  return evidence?{answer,evidence,title:page.title,source:'contusion/'+number}:null;
+ });
+ if(blocks.some(b=>!b))return null;
+ return {kind:'answer',intro:'這章是按病程階段教，不是按 Encephalomalacia 的亞型分類。',blocks,
+  ...(courseOnly?{}:{supplement:'若要延伸比較，先分清你想問的是病因、受損組織，還是病理外觀。這些不是同一個分類問題；這幾頁也沒有足夠資料替本例判定病理亞型。'})};
+}
+
 function evidenceFor(question,pages,current){
  const terms=signal(question),all=new Set(pages.flatMap(p=>signal([p.title,...p.parts].join(' '))));
  const expanded=aliases.flatMap(([pattern,terms])=>pattern.test(question)?terms:[]);
@@ -111,6 +126,11 @@ export function createStudyAI({pages,apiKey,provider='openai',model=provider==='
   if(override.test(question))return unsupported();
   const wantsCourse=fromCourse(question),courseOnly=courseOnlyRequest(question);
   if(wantsCourse&&bleedingTopic.test(question)&&overviewRequest.test(question)&&!narrower.test(question))return bleedingOverview(pages);
+  if(wantsCourse&&/(?:\bencephalomalacia\b|腦(?:組織)?軟化)/i.test(question)&&/(?:幾種|分類|分型|類型|亞型|種類|\b(?:subtypes?|types|classification)\b)/i.test(question)
+     &&!/(?:治療|手術|預後|發生率|治癒)/.test(question)){
+   const overview=encephalomalaciaOverview(pages,courseOnly);
+   if(overview)return overview;
+  }
   const current=pages.some(p=>p.case===input.current)?input.current:'';
   let sources=evidenceFor(question,pages,current);
   const asksCurrentSlide=currentSlideRequest.test(question);
