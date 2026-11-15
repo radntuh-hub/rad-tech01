@@ -17,6 +17,17 @@
     ]
   },
   {
+    "case": "sinus",
+    "page": "6",
+    "title": "為什麼不只 maxillary sinus 受影響？",
+    "parts": [
+      "Ostiomeatal complex",
+      "OMC 是一組相互關聯的 drainage pathways。",
+      "這些 sinuses 的 drainage 與 middle meatus 有關，因此 OMC obstruction 可以造成相關的分布 pattern。",
+      "分布 pattern 幫助理解 extent；dental finding 幫助追查 source。"
+    ]
+  },
+  {
     "case": "npc",
     "page": "4",
     "title": "Foramen ovale：沿 CN V3 向上追蹤",
@@ -26,10 +37,33 @@
   },
   {
     "case": "npc",
+    "page": "6",
+    "title": "DWI 與 ADC 要配對閱讀",
+    "parts": [
+      "把這組資訊與 mass location、morphology、enhancement 和 extension 合起來解讀。",
+      "Diffusion restriction 不是 NPC 專屬；在 abscess 也可能出現。"
+    ]
+  },
+  {
+    "case": "npc",
     "page": "8",
     "title": "Mastoid effusion 與 Level II LAP 的訊息",
     "parts": [
       "NPC 可藉由 Eustachian tube obstruction 造成 middle ear / mastoid fluid；看到 unilateral effusion 時，nasopharynx 值得一起檢查。"
+    ]
+  },
+  {
+    "case": "infection",
+    "page": "6",
+    "title": "Cellulitis、Phlegmon 與 Abscess，不是同一件事",
+    "parts": [
+      "Cellulitis / Inflammatory edema",
+      "Fat stranding、fascial thickening、enhancing edematous tissue。",
+      "Phlegmon",
+      "尚未形成明確可引流 cavity 的 inflammatory tissue。",
+      "Abscess",
+      "Central hypodensity、rim enhancement、mass effect 等線索支持 collection。",
+      "CT 協助定位，但 phlegmon 與 drainable abscess 有時仍難完全區分。"
     ]
   },
   {
@@ -65,6 +99,15 @@
     ]
   },
   {
+    "case": "ranula",
+    "page": "6",
+    "title": "Tail sign：幫助追溯來源的線索",
+    "parts": [
+      "細小的 fluid-containing connection 可以提示 sublingual origin；不能只根據最大的 component 判斷來源。",
+      "Ultrasound 的手術證實病例研究指出，absence of tail sign 不能排除 plunging ranula。"
+    ]
+  },
+  {
     "case": "edh",
     "page": "2",
     "title": "EDH：從所在的 compartment 開始",
@@ -72,6 +115,15 @@
       "Epidural / extradural hematoma",
       "位於 skull inner table 與 dura 之間；典型外觀為 lentiform 或 biconvex。",
       "通常受到 sutural attachment 限制，但有例外。形狀與邊界是定位線索，不是單獨成立的診斷規則。"
+    ]
+  },
+  {
+    "case": "edh",
+    "page": "4",
+    "title": "換到 Bone window：找受力的線索",
+    "parts": [
+      "以 Bone window 沿 skull cortex 連續查看；Brain window 則用來評估 hematoma、contusion 與 mass effect。",
+      "同一份 CT，不同 window 回答不同問題。"
     ]
   },
   {
@@ -85,6 +137,16 @@
     ]
   },
   {
+    "case": "sdh",
+    "page": "7",
+    "title": "為什麼 follow-up 不能只問「血塊變小了嗎」？",
+    "parts": [
+      "Residual / recurrent hemorrhage 與 postoperative change。",
+      "Hemorrhage 與 surrounding edema 是否增加。",
+      "Ventricular compression、midline shift 與 cisternal effacement 的變化。"
+    ]
+  },
+  {
     "case": "contusion",
     "page": "2",
     "title": "Contusion 與 SAH，分別在哪裡？",
@@ -93,6 +155,61 @@
       "出血與 edema 位於受傷的 brain parenchyma，常見於 frontal 或 temporal regions。",
       "Subarachnoid hemorrhage",
       "血液位於 CSF-containing sulci 或 cisterns"
+    ]
+  },
+  {
+    "case": "contusion",
+    "page": "6",
+    "title": "2 weeks：Resolving hematoma 是什麼意思？",
+    "parts": [
+      "血液的外觀會改變，但受傷的 tissue 不一定完全恢復。",
+      "Hemorrhage 的消退與功能恢復，不是同一件事。"
+    ]
+  },
+  {
+    "case": "contusion",
+    "page": "7",
+    "title": "2 months：從 hemorrhage 到 encephalomalacia",
+    "parts": [
+      "後期可見 encephalomalacia，代表 prior injury 後的 tissue loss。"
+    ]
+  },
+  {
+    "case": "contusion",
+    "page": "8",
+    "title": "讀懂這條時間軸",
+    "parts": [
+      "Hematoma 與 edema progression。",
+      "Resolving hematoma。",
+      "Encephalomalacia；需連同臨床功能評估理解。"
+    ]
+  },
+  {
+    "case": "contusion",
+    "page": "9",
+    "title": "自我測驗：密度下降就代表好了嗎？",
+    "parts": [
+      "Resolving hematoma 描述影像變化，不等於沒有 residual injury。後期可能出現 encephalomalacia，功能仍需臨床評估。"
+    ]
+  },
+  {
+    "case": "contusion",
+    "page": "10",
+    "title": "帶走的重點與延伸閱讀",
+    "parts": [
+      "Contusion 可以隨時間變得更明顯。",
+      "SAH 與 parenchymal hemorrhage 是不同 compartment。",
+      "Encephalomalacia 描述舊傷後的 tissue loss。"
+    ]
+  },
+  {
+    "case": "dai",
+    "page": "3",
+    "title": "DAI：從局部血塊，轉向 white matter injury",
+    "parts": [
+      "Diffuse axonal injury",
+      "與 acceleration / deceleration 及 rotational shearing 有關，可能出現於 gray–white matter junction、corpus callosum 與 brainstem。",
+      "MRI 能補充 CT 不易辨認的 lesions。DAI 並不要求每個 lesion 都有 hemorrhage。"
     ]
   },
   {
@@ -120,6 +237,14 @@
     "title": "STIR：把視線移到 ligaments 與 soft tissue",
     "parts": [
       "High signal 是 injury 的線索，判讀仍要連同 anatomy、CT 與其他 MRI sequences。"
+    ]
+  },
+  {
+    "case": "cspine",
+    "page": "6",
+    "title": "Cord 正常，不代表所有結構都正常",
+    "parts": [
+      "Cord status 與 mechanical stability，是不同問題。"
     ]
   }
 ]

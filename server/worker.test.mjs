@@ -109,6 +109,52 @@ test('Course wording without an explicit restriction still gets a labeled genera
  assert.match(result.answer,/光合作用/);
  assert.deepEqual(calls,['model']);
 });
+test('Encephalomalacia questions keep the Contusion lesson and the extra classification separate',async()=>{
+ const {env}=fixture();let calls=0;
+ const worker=createWorker(async(_,options)=>{
+  calls++;
+  const body=JSON.parse(options.body);
+  assert.match(body.systemInstruction.parts[0].text,/不要把未列出的分類硬套到教學病例/);
+  const {sources}=JSON.parse(body.contents[0].parts[0].text);
+  const page=sources.find(source=>source.id==='contusion/7');
+  assert.ok(page,'must retrieve the actual teaching slide, including for long mixed-language questions');
+  assert.ok(!JSON.stringify(sources).includes('mild cognitive impairment'));
+  const passage_index=page.passages.findIndex(p=>p.includes('prior injury 後的 tissue loss'));
+  assert.ok(passage_index>=0);
+  return gemini({disposition:'answer',general_answer:'其他病理分類屬於課外背景，不能由這些投影片判定本例的亞型。',blocks:[{
+   source_id:page.id,passage_index,answer:'Contusion / SAH 章節用 Encephalomalacia 說明舊傷後的 tissue loss。'
+  }]});
+ });
+ for(const question of [
+  'Encephalomalacia 有哪幾種？請把不同分類和教材中提到的內容一起比較看看。',
+  '請問教材怎麼介紹腦軟化？可以對照整理這個名詞在課程中的重點嗎？',
+  'How does the course explain encephalomalacia and which subtypes should students learn?'
+ ]){
+  const result=await (await worker.fetch(req({question,current:'edh'}),env)).json();
+  assert.equal(result.kind,'answer');
+  assert.equal(result.blocks[0].source,'contusion/7');
+  assert.equal(result.blocks[0].evidence,'後期可見 encephalomalacia，代表 prior injury 後的 tissue loss。');
+  assert.match(result.supplement,/課外背景/);
+ }
+ assert.equal(calls,3);
+});
+test('Expanded coverage also retrieves the neck infection teaching comparison',async()=>{
+ const {env}=fixture();let calls=0;
+ const worker=createWorker(async(_,options)=>{
+  calls++;
+  const {sources}=JSON.parse(JSON.parse(options.body).contents[0].parts[0].text);
+  const source=sources.find(s=>s.id==='infection/6');
+  assert.ok(source);
+  return gemini({disposition:'answer',general_answer:'',blocks:[{
+   source_id:source.id,answer:'CT 上有時無法完全區分兩者。',
+   passage_index:source.passages.findIndex(p=>p.includes('難完全區分'))
+  }]});
+ });
+ const result=await (await worker.fetch(req({question:'膿瘍跟 Phlegmon 在這份投影片有什麼重要差別？'}),env)).json();
+ assert.equal(result.blocks[0].source,'infection/6');
+ assert.match(result.blocks[0].evidence,/難完全區分/);
+ assert.equal(calls,1);
+});
 test('Current-slide questions reuse approved excerpts but never accept client-supplied slides',async()=>{
  const {env}=fixture();let calls=0;
  const worker=createWorker(async(_,options)=>{

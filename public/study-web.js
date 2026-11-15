@@ -46,6 +46,7 @@
    result.textContent=messages[answer.kind]||'這題目前無法回答，請試著換個問法。';
    return;
   }
+  const courseLabel=document.createElement('h3');courseLabel.textContent='教材對照';result.append(courseLabel);
   if(answer.intro){const intro=document.createElement('p');intro.textContent=answer.intro;result.append(intro);}
   for(const block of answer.blocks){
    const item=document.createElement('section'),p=document.createElement('p'),quote=document.createElement('blockquote'),a=document.createElement('a');
