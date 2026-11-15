@@ -2,6 +2,9 @@
 sinus/1	看到 sinus opacification，下一個問題是「為什麼在這一側？」
 sinus/3	觀察是 isolated sinus disease，還是同側 drainage pathway 相關的 pattern。
 sinus/7	有可治療的 dental pathology 時，只反覆處理 sinus symptoms 或只用 antibiotics，可能無法解決來源。
+sinus/8	Unilateral maxillary sinus opacification
+sinus/8	有沒有 dental symptoms、dental treatment history 或異味？
+sinus/8	Periapical lucency / Sinus floor defect
 sinus/8	Dental pain 可以缺席；不能因為沒有 toothache，就忽略 odontogenic source。
 sinus/9	Periapical lucency 與相鄰 floor defect，將 dental pathology 和 sinus disease 連在一起。Opacification 本身不交代 source。
 sinus/10	報告不只說哪個 sinus 不正常，也提示病因可能在 dental source。

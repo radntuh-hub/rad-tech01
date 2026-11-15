@@ -12,6 +12,7 @@ const fromCourse=q=>/(?:教材|投影片|課程內容|這份簡報|這個簡報|
 const courseOnlyRequest=q=>/(?:只|僅|限於|限定|限用).{0,8}(?:教材|投影片|課程內容|簡報)|(?:不要|不得|不用|不使用).{0,6}(?:一般知識|外部資料|外部知識)|(?:only|solely|exclusively).{0,28}(?:slides|course materials|course content|deck)/i.test(q);
 const currentSlideRequest=/(?:這[一張個]?頁|本頁|目前這張|這張投影片|\bthis slide\b)/i;
 const courseLocation=/(?:第幾頁|哪[一幾些個]?頁|哪[一幾些個]?章(?:節)?|哪[一幾些個]?張投影片|(?:教材|投影片|簡報)(?:裡|中|上)?哪裡|\b(?:which|what)\s+(?:chapters?|pages?|slides?)\b)/i;
+const explanationRequest=/(?:補充|延伸閱讀|多(?:說|講|解釋)|(?:也|再|並|順便|一起|另外).{0,10}(?:解釋|說明|介紹|整理)|是什麼意思|為什麼|\btell me more\b|\b(?:and|also)\s+(?:explain|summarize|describe)\b|\bwhat does .+ mean\b)/i;
 const bleedingTopic=/(?:腦出血|顱內出血|顱內血腫|腦部出血|intracranial\s+(?:bleeding|hemorrhage|haemorrhage))/i;
 const overviewRequest=/(?:哪[幾些]|有哪些?|幾種|類型|種類|分類|列[出舉]|整理|總覽|what types|which types|list)/i;
 const narrower=/(?:治療|怎麼判讀|怎麼看|處理|鑑別|差別|差異|比較|預後|手術|顱縫|對照|形狀|跨越|發生率)/;
@@ -67,11 +68,21 @@ function encephalomalaciaOverview(pages,courseOnly){
 const pageId=p=>p.case+'/'+p.page;
 const linkFor=p=>({source:pageId(p),chapter:p.chapter,title:p.title});
 const asSource=p=>({id:pageId(p),chapter:p.chapter,title:p.title,passages:p.parts});
-const englishPhrases=value=>new Set((value.toLowerCase().match(/[a-z]{3,}(?: +[a-z]{3,})+/g)||[])
- .flatMap(run=>{
-  const words=run.split(/ +/);
-  return words.slice(1).map((word,i)=>words[i]+' '+word);
- }));
+const englishRuns=value=>(value.toLowerCase().match(/[a-z]{3,}(?: +[a-z]{3,})+/g)||[]).map(run=>run.split(/ +/));
+
+function exactPhrasePages(question,pages){
+ const runs=englishRuns(question);
+ if(!runs.length)return [];
+ const indexed=pages.map(page=>({page,text:[page.title,...page.parts]
+  .flatMap(englishRuns).map(words=>' '+words.join(' ')+' ')}));
+ // Match the longest complete phrase before shorter shared fragments such as "maxillary sinus".
+ for(let length=Math.min(8,Math.max(...runs.map(words=>words.length)));length>=2;length--){
+  const phrases=[...new Set(runs.flatMap(words=>words.slice(length-1).map((_,i)=>' '+words.slice(i,i+length).join(' ')+' ')))];
+  const hits=indexed.filter(({text})=>phrases.some(phrase=>text.some(run=>run.includes(phrase))));
+  if(hits.length)return hits.map(({page})=>page);
+ }
+ return [];
+}
 
 function findPages(question,pages,current){
  const terms=signal(question),all=new Set(pages.flatMap(p=>signal([p.title,p.chapter,p.search,...p.parts].join(' '))));
@@ -135,24 +146,28 @@ export function createStudyAI({pages,apiKey,provider='openai',model=provider==='
   const question=norm(input.question);
   if(privateQuestion.test(question))return {kind:'private_input'};
   if(override.test(question))return unsupported();
-  const wantsCourse=fromCourse(question),courseOnly=courseOnlyRequest(question);
-  if(wantsCourse&&bleedingTopic.test(question)&&overviewRequest.test(question)&&!narrower.test(question))return bleedingOverview(pages);
-  if(wantsCourse&&/(?:\bencephalomalacia\b|腦(?:組織)?軟化)/i.test(question)&&/(?:幾種|分類|分型|類型|亞型|種類|\b(?:subtypes?|types|classification)\b)/i.test(question)
+  const wantsCourse=fromCourse(question),courseOnly=courseOnlyRequest(question),locating=courseLocation.test(question);
+  if(!locating&&wantsCourse&&bleedingTopic.test(question)&&overviewRequest.test(question)&&!narrower.test(question))return bleedingOverview(pages);
+  if(!locating&&wantsCourse&&/(?:\bencephalomalacia\b|腦(?:組織)?軟化)/i.test(question)&&/(?:幾種|分類|分型|類型|亞型|種類|\b(?:subtypes?|types|classification)\b)/i.test(question)
      &&!/(?:治療|手術|預後|發生率|治癒)/.test(question)){
    const overview=encephalomalaciaOverview(pages,courseOnly);
    if(overview)return overview;
   }
   const current=pages.some(p=>p.case===input.current)?input.current:'';
-  const locating=courseLocation.test(question);
   const lookupQuestion=locating?question.replace(courseLocation,' ').replace(/(?:請問|這套|教材|投影片|課程|有提到|提到|有講到|講到|找得到|可以找到|\b(?:course|slides|textbook|includes?|mention(?:s|ed)?|covers?|discuss(?:es|ed)?)\b)/gi,' ').trim():question;
   const located=findPages(lookupQuestion,pages,current);
-  const phrases=englishPhrases(lookupQuestion);
-  const titleHits=located.filter(p=>[...englishPhrases(p.title)].some(phrase=>phrases.has(phrase)));
-  const links=(titleHits.length?titleHits:located).map(linkFor);
-  if(locating){
+  const exact=locating?exactPhrasePages(lookupQuestion,pages):[];
+  const links=(exact.length?exact:located).slice(0,3).map(linkFor);
+  if(locating&&!explanationRequest.test(question)){
    return links.length?{kind:'course_links',links}:{kind:'course_not_found'};
   }
-  let sources=located.filter(p=>p.parts.length).map(asSource);
+  const keepLinks=locating&&links.length;
+  const withoutExplanation=()=>keepLinks?{kind:'course_links',links,
+   note:'AI 補充說明暫時無法提供，仍可查看下方教材。',
+   excerpts:(exact[0]||located[0]).parts.filter(part=>/[。！？.!?]$/.test(part)).slice(0,2)
+  }:unsupported();
+  let sources=[...exact,...located.filter(p=>!exact.some(e=>pageId(e)===pageId(p)))]
+   .filter(p=>p.parts.length).slice(0,3).map(asSource);
   const asksCurrentSlide=currentSlideRequest.test(question);
   const activePage=asksCurrentSlide?pages.find(p=>p.case===current&&p.page===input.currentPage):null;
   if(asksCurrentSlide&&!activePage)return pageMissing();
@@ -161,12 +176,13 @@ export function createStudyAI({pages,apiKey,provider='openai',model=provider==='
    const active=asSource(activePage);
    sources=[active,...sources.filter(row=>row.id!==active.id)].slice(0,3);
   }
-  if(courseOnly&&!sources.length)return courseMissing();
+  if(courseOnly&&!sources.length)return keepLinks?withoutExplanation():courseMissing();
   try{
    const inputText=JSON.stringify({question,sources,...(asksCurrentSlide?{current_slide:activePage?activePage.case+'/'+activePage.page:null}:{})});
    const format=responseFormat(sources,courseOnly);
    const taskInstructions=instructions
     +(courseOnly?'\n使用者要求只依教材回答；general_answer 必須留空，證據不足請標為 unanswered。':'')
+    +(locating?'\n網站會另外顯示已查到的真實頁碼。請專注回答補充說明，先用教材解釋，再把課外背景放在 general_answer（若使用者沒要求只依教材）。':'')
     +(asksCurrentSlide?'\n若問本頁，只有 current_slide 對應來源是目前投影片；如果沒有對應段落，不要把其他投影片說成這一頁。':'');
    const res=await fetcher(gemini?'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent':'https://api.openai.com/v1/responses',{
     method:'POST',redirect:'manual',signal:AbortSignal.timeout(30000),
@@ -187,20 +203,23 @@ export function createStudyAI({pages,apiKey,provider='openai',model=provider==='
    let text;
    if(gemini){
     const candidate=data.candidates?.[0];
-    if(candidate?.finishReason!=='STOP')return unsupported();
+    if(candidate?.finishReason!=='STOP')return withoutExplanation();
     text=candidate.content?.parts?.filter(p=>!p.thought&&typeof p.text==='string').map(p=>p.text).join('');
    }else{
-    if(data.status!=='completed')return unsupported();
+    if(data.status!=='completed')return withoutExplanation();
     const texts=data.output?.filter(x=>x.type==='message'&&x.role==='assistant').flatMap(x=>x.content)||[];
-    if(texts.length!==1||texts[0].type!=='output_text')return unsupported();
+    if(texts.length!==1||texts[0].type!=='output_text')return withoutExplanation();
     text=texts[0].text;
    }
-   let result;try{result=JSON.parse(text);}catch{return unsupported();}
+   let result;try{result=JSON.parse(text);}catch{return withoutExplanation();}
    const verified=verify(result,sources,courseOnly);
+   if(keepLinks)return verified.kind==='unanswered'?withoutExplanation():{...verified,links};
    if(courseOnly&&verified.kind!=='answer')return courseMissing();
+   if(locating&&verified.kind==='general')return {...verified,note:'沒有查到對應的教材頁面；以下是一般知識補充。'};
    if(wantsCourse&&verified.kind==='general')return {...verified,note:'教材摘錄不足以直接回答，以下是一般知識補充。',...(links.length?{links}:{})};
    return verified;
   }catch(e){
+   if(keepLinks)return withoutExplanation();
    if(e.status)throw e;
    fail(502,'AI 連線失敗或逾時，請稍後再試。');
   }

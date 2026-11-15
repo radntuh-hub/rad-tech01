@@ -4,7 +4,7 @@
  const endpoint=(window.STUDENT_STUDY_API||'').replace(/\/$/,'');
  const dialog=document.createElement('dialog');
  dialog.id='student-study';dialog.setAttribute('aria-labelledby','student-study-title');
- dialog.innerHTML='<div class="dialog-top"><h2 id="student-study-title">問 AI</h2><button type="button" class="student-study-close" aria-label="關閉">✕</button></div><form><label for="student-question">你的問題</label><textarea id="student-question" required maxlength="300" rows="3" placeholder="例如：EDH 和 SDH 有何不同？"></textarea><p class="student-study-note">可問教材或一般知識，不提供個人診斷。問題與相關教材段落可能傳給 Google，免費方案可能用於產品改善或由人員審閱。請勿輸入個資、病人資料或機密。</p><button type="submit" disabled>送出問題</button></form><div class="student-results" role="status" aria-live="polite"></div>';
+ dialog.innerHTML='<div class="dialog-top"><h2 id="student-study-title">問 AI</h2><button type="button" class="student-study-close" aria-label="關閉">✕</button></div><form><label for="student-question">你的問題</label><textarea id="student-question" required maxlength="300" rows="3" placeholder="例如：EDH 和 SDH 有何不同？"></textarea><p class="student-study-note">可問教材或一般知識，不提供個人診斷。請勿輸入個資、病人資料或機密。</p><button type="submit" disabled>送出問題</button></form><div class="student-results" role="status" aria-live="polite"></div>';
  document.body.append(dialog);
  const form=dialog.querySelector('form'),input=dialog.querySelector('textarea'),send=form.querySelector('[type=submit]');
  const result=dialog.querySelector('.student-results');
@@ -52,7 +52,16 @@
    if(answer.links?.length)showLinks(answer.links,'以下是搜尋到的相關頁面，不代表這些頁面已回答整個問題。');
    showGeneral(answer.answer,'一般知識（非教材引用）',answer.note);return;
   }
-  if(answer.kind==='course_links'){showLinks(answer.links,answer.note);return;}
+  if(answer.kind==='course_links'){
+   showLinks(answer.links,answer.note);
+   if(answer.excerpts?.length){
+    const label=document.createElement('h3');label.textContent='教材摘錄';result.append(label);
+    for(const text of answer.excerpts){
+     const quote=document.createElement('blockquote');quote.textContent=text;result.append(quote);
+    }
+   }
+   return;
+  }
   if(answer.kind!=='answer'){
    const messages={
     private_input:'請勿輸入個人或病人資料。',
@@ -63,6 +72,7 @@
    result.textContent=messages[answer.kind]||'這題目前無法回答，請試著換個問法。';
    return;
   }
+  if(answer.links?.length)showLinks(answer.links);
   const courseLabel=document.createElement('h3');courseLabel.textContent='教材對照';result.append(courseLabel);
   if(answer.intro){const intro=document.createElement('p');intro.textContent=answer.intro;result.append(intro);}
   for(const block of answer.blocks){

@@ -216,6 +216,40 @@ test('Course location questions use actual titles across the deck without sendin
  assert.equal(report.kind,'course_links');
  assert.deepEqual(calls,[]);
 });
+const mixedSinusQuestion='Unilateral maxillary sinus opacification 可以跟我說在第幾頁嗎？還有可以多補充一點資料嗎';
+test('Mixed location and explanation requests return the exact slide and a supplement',async()=>{
+ const {env}=fixture();let calls=0;
+ const worker=createWorker(async(_,options)=>{
+  calls++;
+  const {sources}=JSON.parse(JSON.parse(options.body).contents[0].parts[0].text);
+  assert.equal(sources[0].id,'sinus/8');
+  const index=sources[0].passages.indexOf('Unilateral maxillary sinus opacification');
+  assert.ok(index>=0);
+  return gemini({disposition:'answer',general_answer:'Opacification 描述影像表現，不是單憑這個字就能確定的病因。',blocks:[
+   {source_id:'sinus/8',passage_index:index,answer:'第 8 頁用這個詞提醒讀者追查可能的 dental source。'}
+  ]});
+ });
+ const result=await (await worker.fetch(req({question:mixedSinusQuestion,current:'edh'}),env)).json();
+ assert.equal(result.kind,'answer');
+ assert.deepEqual(result.links.map(p=>p.source),['sinus/8']);
+ assert.equal(result.blocks[0].source,'sinus/8');
+ assert.match(result.supplement,/不是單憑/);
+ assert.equal(calls,1);
+});
+test('Page links survive when the supplement is not available, without guessing or retrying',async()=>{
+ const {env}=fixture();let calls=0;
+ const worker=createWorker(async()=>{calls++;return new Response(null,{status:429});});
+ const locateOnly=await (await worker.fetch(req({question:mixedSinusQuestion.split('？')[0]+'？'}),env)).json();
+ assert.equal(locateOnly.kind,'course_links');
+ assert.deepEqual(locateOnly.links.map(p=>p.source),['sinus/8']);
+ assert.equal(calls,0);
+ const result=await (await worker.fetch(req({question:mixedSinusQuestion}),env)).json();
+ assert.equal(result.kind,'course_links');
+ assert.deepEqual(result.links.map(p=>p.source),['sinus/8']);
+ assert.match(result.note,/補充說明/);
+ assert.ok(result.excerpts.some(text=>text.includes('Dental pain')));
+ assert.equal(calls,1);
+});
 test('Explanations can use an indexed former gap and never send the case history or search index',async()=>{
  const {env}=fixture();
  const worker=createWorker(async(_,options)=>{
