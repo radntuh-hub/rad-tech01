@@ -109,3 +109,29 @@ test('Repeated bad passwords are throttled for the sign-in source',async()=>{
  for(let i=0;i<8;i++)assert.equal((await loginRequest('wrong')).status,401);
  assert.equal((await loginRequest('wrong')).status,429);
 });
+
+test('New text boxes persist, publish and rollback with safe text and normalized positions',async()=>{
+ const {request,login}=fixture(),teacher=await login(teacherPass),admin=await login(adminPass);
+ const id='sinus/1:box:qa-new-box';
+ const slides={text:{'sinus/1:text:0':''},layout:{[id]:{x:.15,y:.1}},styles:{[id]:{size:28,bold:true}},imageArrows:{},
+  boxes:{[id]:{text:'教師補充\n<script>alert(1)</script>',x:.1,y:.2,width:.4}}};
+ for(const boxes of [
+  {[id]:{...slides.boxes[id],width:2}},
+  {[id]:{...slides.boxes[id],x:.9}},
+  {'fake/1:box:no-page':slides.boxes[id]},
+  {'sinus/1:text:0':slides.boxes[id]},
+  {[id]:{...slides.boxes[id],text:'x'.repeat(4001)}}
+ ]){
+  assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data:{...pack([]),slides:{...slides,boxes}}}})).status,400);
+ }
+ assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data:{...pack([]),slides}}})).status,200);
+ assert.deepEqual((await (await request('/api/arrows/draft',{cookie:admin})).json()).draft.data.slides,slides);
+ assert.equal((await request('/api/arrows/publish',{cookie:admin,body:{revision:1,liveRevision:0}})).status,200);
+ assert.deepEqual((await (await request('/api/arrows/published')).json()).slides,slides);
+ const empty={text:{},layout:{},styles:{},imageArrows:{},boxes:{}};
+ assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:1,data:{...pack([]),slides:empty}}})).status,200);
+ assert.equal((await request('/api/arrows/publish',{cookie:admin,body:{revision:2,liveRevision:1}})).status,200);
+ assert.equal((await (await request('/api/arrows/published')).json()).slides,undefined);
+ assert.equal((await request('/api/arrows/rollback',{cookie:admin,body:{revision:2,liveRevision:2}})).status,200);
+ assert.deepEqual((await (await request('/api/arrows/published')).json()).slides,slides);
+});

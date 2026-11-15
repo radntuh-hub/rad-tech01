@@ -258,7 +258,7 @@ document.querySelector('#contents-open').onclick=()=>document.querySelector('#co
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close).close());
 document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{document.querySelector('#contents').close();go(b.dataset.page)});
 document.querySelector('#fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{alert('請使用瀏覽器的全螢幕功能。')}};
-document.addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||/INPUT|TEXTAREA|SELECT|BUTTON|VIDEO|SUMMARY|A/.test(document.activeElement.tagName))return;if(e.key==='ArrowRight'){e.preventDefault();go(current+1)}if(e.key==='ArrowLeft'){e.preventDefault();go(current-1)}});
+document.addEventListener('keydown',e=>{if(e.isComposing||document.activeElement.isContentEditable||document.querySelector('dialog[open]')||/INPUT|TEXTAREA|SELECT|BUTTON|VIDEO|SUMMARY|A/.test(document.activeElement.tagName))return;if(e.key==='ArrowRight'){e.preventDefault();go(current+1)}if(e.key==='ArrowLeft'){e.preventDefault();go(current-1)}});
 window.addEventListener('hashchange',fromHash);fromHash();
 </script>
 <link rel="stylesheet" href="study-web.css">

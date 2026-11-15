@@ -13,7 +13,7 @@
    };
    buttons.push(b);return b;
   };
-  const counts=()=>`草稿第 ${state.draft.revision} 版 · 已發布 ${state.live.count} 支箭頭`;
+  const counts=()=>`草稿第 ${state.draft.revision} 版 · 學生版第 ${state.live.revision} 版`;
   async function post(op,input={}){
    const response=await fetch('/api/arrows/'+op,{
     method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)

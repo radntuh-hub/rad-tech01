@@ -2,6 +2,7 @@
  'use strict';
  const copy=value=>JSON.parse(JSON.stringify(value));
  function start(deck,message){
+  document.body.classList.add('deck-teacher');
   const main=document.querySelector('main'),panel=document.createElement('section');
   panel.className='content-editor';panel.hidden=true;
   panel.setAttribute('aria-label','投影片內容編輯');
@@ -15,22 +16,43 @@
   const toggle=document.createElement('button');toggle.type='button';toggle.textContent='編輯內容';toggle.dataset.teacherAction='';
   toggle.setAttribute('aria-expanded','false');
   document.querySelector('.header-actions').prepend(toggle);
-  let selected=null,moving=false,drawing=false,drag=null,undo=[],redo=[],typing=false;
+  const add=document.createElement('button'),remove=document.createElement('button');
+  add.type=remove.type='button';add.textContent='新增文字方塊';remove.textContent='刪除文字方塊';remove.hidden=true;
+  panel.querySelector('.content-editor-controls').prepend(add,remove);
+  const handles=document.createElement('div');handles.className='deck-selection-tools';handles.hidden=true;
+  handles.innerHTML='<button type="button" title="拖曳移動選取項目" aria-label="拖曳移動選取項目">移動</button>';
+  const handle=handles.querySelector('button');
+  let selected=null,moving=false,drawing=false,drag=null,undo=[],redo=[],typing=false,composing=false,suppressClick=false;
   const active=()=>main.querySelector('article:not([hidden])');
+  function editable(item,on){
+   if(item?.kind!=='text')return;
+   if(on){item.node.setAttribute('contenteditable','plaintext-only');item.node.setAttribute('spellcheck','false');}
+   else {item.node.removeAttribute('contenteditable');item.node.removeAttribute('spellcheck');}
+  }
+  function positionHandle(){
+   handles.hidden=panel.hidden||!selected?.movable||selected.article.hidden||drawing;
+   if(handles.hidden)return;
+   const box=selected.node.getBoundingClientRect(),parent=selected.article.getBoundingClientRect();
+   selected.article.classList.add('deck-editing-page');selected.article.append(handles);
+   handles.style.left=Math.max(0,Math.min(parent.width-64,box.left-parent.left))+'px';
+   handles.style.top=Math.max(-24,box.top-parent.top-30)+'px';
+  }
   function finishMove(){
    if(drawing)deck.paintPicture(selected);
    moving=false;drawing=false;drag=null;
    selected?.node.classList.remove('deck-teacher-moving','deck-teacher-drawing');
    move.textContent='拖曳移動';move.setAttribute('aria-pressed','false');
    draw.textContent='在圖片畫箭頭';draw.setAttribute('aria-pressed','false');
+   editable(selected,!panel.hidden);positionHandle();
   }
   function undoState(){
    undoButton.disabled=!undo.length;redoButton.disabled=!redo.length;
   }
   function choose(item){
-   finishMove();typing=false;selected?.node.classList.remove('deck-teacher-selected');
+   finishMove();typing=false;editable(selected,false);selected?.node.classList.remove('deck-teacher-selected');
    selected=item||null;selected?.node.classList.add('deck-teacher-selected');
    select.value=selected?.id||'';
+   editable(selected,!panel.hidden);remove.hidden=!selected?.added;
    move.disabled=!selected?.movable||window.matchMedia('(max-width: 540px)').matches;reset.disabled=!selected;
    textFields.hidden=selected?.kind!=='text';
    photo.hidden=selected?.kind!=='image';
@@ -47,7 +69,7 @@
     color.value=style.color??'#172820';
     bold.checked=style.bold??Number(getComputedStyle(selected.node).fontWeight)>=600;
    }
-   undoState();
+   undoState();positionHandle();
   }
   function refresh(){
    if(panel.hidden)return;
@@ -65,7 +87,7 @@
     deck.replace(next);
     if(!group||!typing){undo.push(previous);if(undo.length>80)undo.shift();}
     redo=[];typing=group;
-    if(redraw)refresh();else undoState();
+    if(redraw)refresh();else {undoState();positionHandle();}
     message('內容已修改。完成後請按「儲存草稿」。');
    }catch(error){message(error.message,true);}
   }
@@ -77,30 +99,59 @@
   toggle.onclick=()=>{
    panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));
    toggle.textContent=panel.hidden?'編輯內容':'結束內容編輯';
+   main.classList.toggle('deck-editing',!panel.hidden);
+   document.body.classList.toggle('deck-content-open',!panel.hidden);
    if(panel.hidden)choose(null);else refresh();
   };
   select.onchange=()=>choose(deck.items.get(select.value));
-  text.onblur=()=>{typing=false;};
-  text.oninput=()=>{
-   if(!selected||!text.value.trim())return;
-   update(next=>{
-    if(text.value===selected.original)delete next.text[selected.id];
-    else next.text[selected.id]=text.value;
-   },{group:true,redraw:false});
+  add.onclick=()=>{
+   const article=active();if(!article)return;
+   const id=article.dataset.case+'/'+article.dataset.pageInCase+':box:'+crypto.randomUUID();
+   update(next=>{next.boxes??={};next.boxes[id]={text:'新增文字',x:.08,y:.2,width:.4};});
+   refresh();choose(deck.items.get(id));
+   if(selected){
+    selected.node.focus();const range=document.createRange();range.selectNodeContents(selected.node);
+    const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+   }
   };
+  remove.onclick=()=>{
+   if(!selected?.added)return;
+   const id=selected.id;choose(null);
+   update(next=>{for(const group of ['boxes','text','layout','styles'])delete next[group]?.[id];});
+  };
+  text.onblur=()=>{typing=false;};
+  function changeText(value){
+   if(!selected)return;
+   update(next=>{
+    if(selected.added){next.boxes[selected.id].text=value;delete next.text[selected.id];}
+    else if(value===selected.original)delete next.text[selected.id];
+    else next.text[selected.id]=value;
+   },{group:true,redraw:false});
+  }
+  text.oninput=e=>{if(!e.isComposing)changeText(text.value);};
+  text.addEventListener('compositionend',()=>changeText(text.value));
+  main.addEventListener('compositionstart',()=>{composing=true;});
+  main.addEventListener('compositionend',e=>{composing=false;inlineInput(e);});
+  function inlineInput(e){
+   if(panel.hidden||composing||e.isComposing||selected?.kind!=='text'||e.target!==selected.node)return;
+   const value=selected.node.innerText;changeText(value);text.value=value;
+  }
+  main.addEventListener('input',inlineInput);
+  main.addEventListener('focusout',()=>{typing=false;});
   function setStyle(key,value){
    if(!selected)return;
    update(next=>{
     const style={...next.styles[selected.id]};
     if(value===undefined)delete style[key];else style[key]=value;
     if(Object.keys(style).length)next.styles[selected.id]=style;else delete next.styles[selected.id];
-   });
+   },{redraw:false});
   }
   size.onchange=()=>setStyle('size',size.value?size.valueAsNumber:undefined);
+  size.oninput=()=>{if(!size.value||size.validity.valid)size.onchange();};
   color.onchange=()=>setStyle('color',color.value);
   bold.onchange=()=>setStyle('bold',bold.checked);
   reset.onclick=()=>{if(selected)update(next=>{
-   for(const group of Object.values(next))delete group[selected.id];
+   for(const [key,group] of Object.entries(next))if(key!=='boxes')delete group[selected.id];
    for(const [id,a] of Object.entries(next.imageArrows))if(a.image===selected.id)delete next.imageArrows[id];
   });};
   panel.querySelector('[data-format-reset]').onclick=()=>{if(selected)update(next=>{delete next.styles[selected.id];});};
@@ -110,6 +161,7 @@
    if(moving){finishMove();return;}
    finishMove();
    moving=true;selected.node.classList.add('deck-teacher-moving');move.textContent='取消移動';move.setAttribute('aria-pressed','true');
+   editable(selected,false);
    message('拖曳目前選取的文字或圖片。');
   };
   draw.onclick=()=>{
@@ -117,6 +169,7 @@
    if(!selected||!deck.pictureBox(selected)){message('圖片還沒載入完成。',true);return;}
    finishMove();
    drawing=true;selected.node.classList.add('deck-teacher-drawing');draw.textContent='取消畫箭頭';draw.setAttribute('aria-pressed','true');
+   positionHandle();
    message('在圖片內從箭尾拖到箭尖。');
   };
   function arrowFields(){
@@ -128,20 +181,33 @@
   arrowColor.onchange=()=>{if(arrowMenu.value)update(next=>{next.imageArrows[arrowMenu.value].color=arrowColor.value;});};
   removeArrow.onclick=()=>{if(arrowMenu.value)update(next=>{delete next.imageArrows[arrowMenu.value];});};
   main.addEventListener('click',e=>{
-   if(panel.hidden||e.target.closest('.viewer,.course-feedback,.refs'))return;
+   if(panel.hidden||e.target.closest('.viewer,.course-feedback,.refs,.deck-selection-tools'))return;
+   if(suppressClick){suppressClick=false;e.preventDefault();e.stopPropagation();return;}
    const items=deck.onPage.get(active())||[];
    const candidates=items.filter(item=>item.node.contains(e.target));
    const item=candidates.find(item=>item.kind==='image')||candidates.at(-1);
    if(!item)return;
-   e.preventDefault();e.stopPropagation();
-   if(!moving&&!drawing)choose(item);
+   if(item.kind==='image'||moving||drawing)e.preventDefault();
+   e.stopPropagation();
+   if(!moving&&!drawing&&selected!==item)choose(item);
+   if(item.kind==='text'&&!moving&&!drawing)item.node.focus({preventScroll:true});
   },true);
+  // Select on pointerdown so the browser can place the caret during the same click.
   main.addEventListener('pointerdown',e=>{
-   if((!moving&&!drawing)||drag||e.button!==0||!selected?.node.contains(e.target))return;
+   if(panel.hidden||moving||drawing||e.target.closest('.viewer,.course-feedback,.refs,.deck-selection-tools'))return;
+   const item=(deck.onPage.get(active())||[]).find(item=>item.kind==='text'&&item.node.contains(e.target));
+   if(item&&item!==selected)choose(item);
+  },true);
+  handle.addEventListener('pointerdown',e=>{
+   if(!selected?.movable||window.matchMedia('(max-width: 540px)').matches)return;
+   finishMove();moving=true;editable(selected,false);selected.node.classList.add('deck-teacher-moving');
+  });
+  main.addEventListener('pointerdown',e=>{
+   if((!moving&&!drawing)||drag||e.button!==0||(!selected?.node.contains(e.target)&&!handles.contains(e.target)))return;
    const box=drawing?deck.pictureBox(selected):selected.article.getBoundingClientRect(),state=deck.state.layout[selected.id]||{x:0,y:0};
    if(!box?.width||!box.height)return;
    if(drawing&&(e.clientX<box.left||e.clientX>box.left+box.width||e.clientY<box.top||e.clientY>box.top+box.height))return;
-   drag={pointer:e.pointerId,x:e.clientX,y:e.clientY,box,state};
+   suppressClick=false;drag={pointer:e.pointerId,x:e.clientX,y:e.clientY,box,state};
    e.preventDefault();main.setPointerCapture(e.pointerId);
   });
   const clamp=x=>Math.max(-1,Math.min(1,x));
@@ -157,10 +223,11 @@
   main.addEventListener('pointermove',e=>{
    if(drag?.pointer!==e.pointerId)return;
    if(drawing)deck.paintPicture(selected,imageArrow(e));
-   else deck.place(selected,position(e));
+   else {deck.place(selected,position(e));positionHandle();}
   });
   main.addEventListener('pointerup',e=>{
    if(drag?.pointer!==e.pointerId)return;
+   suppressClick=true;
    if(drawing){
     const a=imageArrow(e),{width,height}=drag.box;finishMove();
     if(Math.hypot((a.x2-a.x1)*width,(a.y2-a.y1)*height)<8)return;
@@ -176,6 +243,12 @@
    if(moving)deck.place(selected,deck.state.layout[selected.id]);finishMove();
   });
   document.addEventListener('deck:slide',refresh);
+  document.addEventListener('keydown',e=>{
+   if(panel.hidden||e.isComposing||composing)return;
+   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){
+    e.preventDefault();e.stopPropagation();restore(e.shiftKey?redo:undo,e.shiftKey?undo:redo);
+   }
+  });
   window.addEventListener('resize',refresh);
   return {refresh};
  }

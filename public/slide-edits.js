@@ -1,6 +1,6 @@
 (() => {
  'use strict';
- const blank=()=>({text:{},layout:{},styles:{},imageArrows:{}});
+ const blank=()=>({text:{},layout:{},styles:{},imageArrows:{},boxes:{}});
  const record=o=>o&&typeof o==='object'&&!Array.isArray(o);
  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
  const within=(x,a,b)=>Number.isFinite(x)&&x>=a&&x<=b;
@@ -8,9 +8,9 @@
   const out=blank();if(value===undefined)return out;
   if(!record(value))throw Error('投影片編輯資料格式不正確。');
   let total=0;
-  const target=id=>typeof id==='string'&&id.match(/^([a-z]+\/[1-9]\d?):(text|image):(\d{1,3})$/);
+  const target=id=>typeof id==='string'&&id.match(/^([a-z]+\/[1-9]\d?):(?:(text|image):(\d{1,3})|(box):([a-z0-9-]{1,64}))$/i);
   for(const group of Object.keys(out)){
-   if(group==='imageArrows'&&value[group]===undefined)continue;
+   if(['imageArrows','boxes'].includes(group)&&value[group]===undefined)continue;
    if(!record(value[group]))throw Error('投影片編輯資料格式不正確。');
    const entries=Object.entries(value[group]);
    if(entries.length>1200)throw Error('編輯項目過多。');
@@ -23,10 +23,16 @@
      out.imageArrows[id]={image,x1,y1,x2,y2,color};continue;
     }
     const match=target(id);
-    if(!match||!Object.hasOwn(pages,match[1])||(group!=='layout'&&match[2]!=='text'))
+    if(!match||!Object.hasOwn(pages,match[1])||(group!=='layout'&&match[2]!=='text'&&match[4]!=='box')||
+     (match[4]==='box'&&!Object.hasOwn(value.boxes||{},id)))
      throw Error('投影片或項目代號不正確。');
-    if(group==='text'){
-     if(typeof item!=='string'||!item.trim()||item.length>4000)throw Error('請輸入 1 到 4000 字的文字。');
+    if(group==='boxes'){
+     if(match[4]!=='box'||!record(item)||typeof item.text!=='string'||item.text.length>4000||
+      !within(item.x,0,1)||!within(item.y,0,1)||!within(item.width,.15,1)||item.x+item.width>1.001)
+      throw Error('新增文字方塊的文字、位置或寬度不正確。');
+     total+=item.text.length;out.boxes[id]={text:item.text,x:item.x,y:item.y,width:item.width};
+    }else if(group==='text'){
+     if(typeof item!=='string'||item.length>4000)throw Error('文字不可超過 4000 字。');
      total+=item.length;out.text[id]=item;
     }else if(group==='layout'){
      if(!record(item)||!within(item.x,-1,1)||!within(item.y,-1,1))throw Error('移動位置超出範圍。');
@@ -51,6 +57,7 @@
    }
   }
   if(total>90000)throw Error('草稿文字過長。');
+  if(!Object.keys(out.boxes).length)delete out.boxes;
   return out;
  }
  const nonempty=state=>Object.values(state).some(group=>Object.keys(group).length);
@@ -75,6 +82,26 @@
   }
   let state=blank();
   const modified=new Set();
+  function syncBoxes(){
+   for(const [id,item] of items){
+    if(item.added&&!Object.hasOwn(state.boxes||{},id)){
+     item.node.remove();items.delete(id);onPage.set(item.article,onPage.get(item.article).filter(row=>row!==item));
+    }
+   }
+   for(const [id,box] of Object.entries(state.boxes||{})){
+    let item=items.get(id);
+    if(!item){
+     const page=id.split(':')[0],article=[...onPage.keys()].find(a=>a.dataset.case+'/'+a.dataset.pageInCase===page);
+     if(!article)continue;
+     const node=document.createElement('div');node.className='deck-added-text';article.append(node);
+     item={id,node,article,kind:'text',original:box.text,movable:true,added:true};
+     items.set(id,item);onPage.get(article).push(item);
+    }
+    item.original=box.text;
+    item.node.style.left=box.x*100+'%';item.node.style.top=box.y*100+'%';item.node.style.width=box.width*100+'%';
+   }
+   for(const article of onPage.keys())article.classList.toggle('deck-has-boxes',onPage.get(article).some(item=>item.added));
+  }
   function paintItem(item){
    const {id,node,kind}=item,s=state.styles[id];
    if(kind==='text'){
@@ -94,7 +121,7 @@
   function place({node,article,movable,kind},position){
    node.style.removeProperty(custom[3]);node.style.removeProperty(custom[4]);
    node.classList.toggle('deck-edited-position',!!position&&movable);
-   node.classList.toggle('deck-edited-fit',!!position&&movable&&kind==='text'&&!node.closest('ul,ol,dl'));
+   node.classList.toggle('deck-edited-fit',!!position&&movable&&kind==='text'&&!node.closest('ul,ol,dl')&&!node.classList.contains('deck-added-text'));
    if(!position||!movable||article.hidden)return;
    const parent=article.getBoundingClientRect(),box=node.getBoundingClientRect();
    if(!parent.width||!parent.height||!box.width||!box.height)return;
@@ -168,8 +195,8 @@
    if(link)link.textContent=chapter.titles[i];
   }
   function replace(value){
-   const next=validate(value,pages),currentKeys=new Set([next.text,next.layout,next.styles].flatMap(group=>Object.keys(group)));
-   state=next;
+   const next=validate(value,pages),currentKeys=new Set([next.text,next.layout,next.styles,next.boxes||{}].flatMap(group=>Object.keys(group)));
+   state=next;syncBoxes();
    for(const id of new Set([...modified,...currentKeys])){
     const item=items.get(id);if(!item)continue;
     paintItem(item);if(item.node.tagName==='H1')title(item);
