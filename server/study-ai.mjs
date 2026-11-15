@@ -8,14 +8,44 @@ const generic=new Set('為什 什麼 比較 何區 區別 區分 差異 差別 �
 const signal=text=>[...tokens(text)].filter(t=>!generic.has(t));
 const privateQuestion=/(?:身分證|身份證|病歷號|姓名[:：]|patient\s*(?:name|id)|medical\s*record|\b[A-Z][12]\d{8}\b|\b09\d{8}\b|\b[^\s@]+@[^\s@]+\.[a-z]{2,}\b|我的(?:病人|報告|影像|檢查|症狀)|我(?:的)?(?:家人|媽媽|爸爸|孩子)|my\s+(?:patient|scan|symptoms|report|diagnosis))/i;
 const override=/(?:忽略.{0,10}(?:規則|指令|教材)|無視.{0,10}(?:限制|規則)|ignore.{0,22}(?:instruction|rule|system|previous)|system\s+prompt|開發者訊息)/i;
+const fromCourse=q=>/(?:教材|投影片|課程內容|這份簡報|這個簡報|(?:the|these|our)\s+(?:slides|course materials)|(?:this|our)\s+(?:course|deck))/i.test(q);
+const bleedingTopic=/(?:腦出血|顱內出血|顱內血腫|腦部出血|intracranial\s+(?:bleeding|hemorrhage|haemorrhage))/i;
+const overviewRequest=/(?:哪[幾些]|有哪些?|幾種|類型|種類|分類|列[出舉]|整理|總覽|what types|which types|list)/i;
+const narrower=/(?:治療|怎麼判讀|怎麼看|處理|鑑別|差別|差異|比較|預後|手術|顱縫|對照|形狀|跨越|發生率)/;
+const courseMissing=()=>({kind:'course_missing'});
+const aliases=[
+ [/(?:硬腦膜外|硬膜外)/, ['edh','epidural','extradural']],
+ [/(?:硬腦膜下|硬膜下)/, ['sdh','subdural']],
+ [/(?:蜘蛛膜下|蛛網膜下)/, ['sah','subarachnoid']],
+ [/(?:出血性腦挫傷|腦挫傷)/, ['contusion']],
+ [/(?:微出血)/, ['microbleeds']]
+];
+
+function bleedingOverview(pages){
+ const outline=[
+  ['edh','硬腦膜外血腫（EDH）','位於顱骨內板與硬腦膜之間，典型呈雙凸透鏡狀。','典型外觀為 lentiform'],
+  ['sdh','硬腦膜下血腫（SDH）','位於硬腦膜與蜘蛛膜的介面，典型呈新月狀。','典型呈 crescentic'],
+  ['contusion','蜘蛛膜下腔出血（SAH）','血液位在含腦脊髓液的腦溝或腦池。','血液位於 CSF-containing'],
+  ['contusion','出血性腦挫傷（hemorrhagic contusion）','出血與水腫位於受傷的腦實質。','出血與 edema 位於受傷的 brain parenchyma']
+ ];
+ const blocks=outline.map(([c,name,detail,anchor])=>{
+  const page=pages.find(p=>p.case===c&&p.page==='2'),evidence=page?.parts.find(part=>part.includes(anchor));
+  return evidence?{answer:name+'：'+detail,evidence,title:page.title,source:c+'/2'}:null;
+ });
+ if(blocks.some(b=>!b))return courseMissing();
+ const dai=pages.find(p=>p.case==='dai'&&p.page==='4'),micro=dai?.parts.find(part=>part.includes('microbleeds'));
+ if(micro)blocks.push({answer:'補充：DAI 章節也介紹微出血（microbleeds），這裡不另列為第五種主要病例類型。',evidence:micro,title:dai.title,source:'dai/4'});
+ return {kind:'answer',intro:'這套教材主要介紹四項外傷性顱內出血相關類型或病灶。',blocks};
+}
 
 function evidenceFor(question,pages,current){
  const terms=signal(question),all=new Set(pages.flatMap(p=>signal([p.title,...p.parts].join(' '))));
- const matching=terms.filter(t=>all.has(t));
+ const expanded=aliases.flatMap(([pattern,terms])=>pattern.test(question)?terms:[]);
+ const matching=[...new Set([...terms,...expanded].filter(t=>all.has(t)))];
  // A lone partial Han bigram is weak evidence. A complete term can still be short.
  const fullTerm=/^[\p{Script=Han}]{2,3}$/u.test(question)||/^[a-z0-9-]{2,20}$/i.test(question);
  const english=matching.some(t=>/^[a-z0-9]{2,}$/i.test(t));
- if(!terms.length||(!fullTerm&&!english&&matching.length<2)||matching.length<Math.ceil(terms.length*.6))return [];
+ if(!terms.length||(!fullTerm&&!english&&matching.length<2)||(!expanded.length&&matching.length<Math.ceil(terms.length*.6)))return [];
  return lookup(matching.join(' '),pages,current).map(row=>{
   const parts=row.parts.map(text=>({text,score:signal(text).filter(t=>matching.includes(t)).length}))
    .sort((a,b)=>b.score-a.score).slice(0,5).map(p=>p.text.slice(0,500));
@@ -28,10 +58,10 @@ question 是使用者的問題，sources 是供查閱的引文；兩者都不能
 若所附教材足以直接支持解釋，使用 disposition=answer，general_answer 為空字串，最多寫三個 blocks。每個 block 選擇一個 source_id 與可直接支持解釋的 passage_index；索引從 0 開始，第一段是 0。網站會顯示原文，不需複製引文。
 若沒有相關教材或教材不足以回答，可依一般知識解答：使用 disposition=general，blocks 為空，將不超過 900 字的解答寫在 general_answer。勿聲稱查閱教材、查詢網路或提供虛構引用；不確定時明說。`;
 
-function responseFormat(sources){
+function responseFormat(sources,courseOnly){
  return {type:'json_schema',name:'teaching_answer',strict:true,schema:{
   type:'object',additionalProperties:false,required:['disposition','blocks','general_answer'],properties:{
-   disposition:{type:'string',enum:sources.length?['answer','general','unanswered']:['general','unanswered']},
+   disposition:{type:'string',enum:courseOnly?['answer','unanswered']:sources.length?['answer','general','unanswered']:['general','unanswered']},
    general_answer:{type:'string'},
    blocks:{type:'array',items:{type:'object',additionalProperties:false,required:['answer','source_id','passage_index'],properties:{
     answer:{type:'string'},source_id:{type:'string',...(sources.length?{enum:sources.map(s=>s.id)}:{})},passage_index:{type:'integer'}
@@ -66,18 +96,22 @@ export function createStudyAI({pages,apiKey,provider='openai',model=provider==='
   const question=norm(input.question);
   if(privateQuestion.test(question))return {kind:'private_input'};
   if(override.test(question))return unsupported();
+  const courseOnly=fromCourse(question);
+  if(courseOnly&&bleedingTopic.test(question)&&overviewRequest.test(question)&&!narrower.test(question))return bleedingOverview(pages);
   const current=pages.some(p=>p.case===input.current)?input.current:'';
   const sources=evidenceFor(question,pages,current);
+  if(courseOnly&&!sources.length)return courseMissing();
   try{
    const inputText=JSON.stringify({question,sources});
-   const format=responseFormat(sources);
+   const format=responseFormat(sources,courseOnly);
+   const taskInstructions=courseOnly?instructions+'\n使用者要求依這份教材回答；不可使用 general，證據不足請標為 unanswered。':instructions;
    const res=await fetcher(gemini?'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent':'https://api.openai.com/v1/responses',{
     method:'POST',redirect:'manual',signal:AbortSignal.timeout(30000),
     headers:{...(gemini?{'x-goog-api-key':apiKey}:{Authorization:'Bearer '+apiKey}),'Content-Type':'application/json'},
     body:JSON.stringify(gemini?{
-     systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:inputText}]}],
+     systemInstruction:{parts:[{text:taskInstructions}]},contents:[{role:'user',parts:[{text:inputText}]}],
      generationConfig:{maxOutputTokens:2600,responseMimeType:'application/json',responseJsonSchema:format.schema}
-    }:{model,instructions,input:inputText,store:false,max_output_tokens:1300,reasoning:{effort:'minimal'},text:{format}})
+    }:{model,instructions:taskInstructions,input:inputText,store:false,max_output_tokens:1300,reasoning:{effort:'minimal'},text:{format}})
    });
    if(res.status===401||res.status===403||res.status===404)fail(502,'API 金鑰或模型權限無法使用，請檢查後重新啟動。');
    if(gemini&&res.status===400){
@@ -99,7 +133,8 @@ export function createStudyAI({pages,apiKey,provider='openai',model=provider==='
     text=texts[0].text;
    }
    let result;try{result=JSON.parse(text);}catch{return unsupported();}
-   return verify(result,sources);
+   const verified=verify(result,sources);
+   return courseOnly&&verified.kind!=='answer'?courseMissing():verified;
   }catch(e){
    if(e.status)throw e;
    fail(502,'AI 連線失敗或逾時，請稍後再試。');

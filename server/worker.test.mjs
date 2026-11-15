@@ -71,6 +71,35 @@ test('General answers cannot invent slide citations',async()=>{
  assert.deepEqual(await (await worker.fetch(req({question:'光合作用'}),env)).json(),{kind:'unanswered'});
  assert.deepEqual(await (await worker.fetch(req({question:'EDH'}),env)).json(),{kind:'unanswered'});
 });
+test('Course overview covers four distinct taught topics with their actual slide sources',async()=>{
+ const {env,calls,worker}=fixture();
+ for(const question of ['請幫我整理教材中有哪幾種腦出血的類型？','這套投影片裡有哪些顱內出血？','What types of intracranial hemorrhage are in these slides?']){
+  const response=await worker.fetch(req({question}),env);
+  const result=await response.json();
+  assert.equal(result.kind,'answer');
+  assert.match(result.intro,/四項/);
+  assert.deepEqual(result.blocks.map(b=>b.source),['edh/2','sdh/2','contusion/2','contusion/2','dai/4']);
+  assert.match(result.blocks[2].answer,/SAH/);
+  assert.match(result.blocks[3].answer,/出血性腦挫傷/);
+  assert.match(result.blocks[4].answer,/不另列/);
+ }
+ assert.deepEqual(calls,[]);
+});
+test('Explicit course-only requests cannot fall back to general knowledge',async()=>{
+ const {env}=fixture();let calls=0;
+ const worker=createWorker(async(_,options)=>{
+  calls++;
+  const body=JSON.parse(options.body);
+  assert.deepEqual(body.generationConfig.responseJsonSchema.properties.disposition.enum,['answer','unanswered']);
+  const {sources}=JSON.parse(body.contents[0].parts[0].text);
+  assert.ok(sources.some(s=>s.id==='edh/2'));
+  return gemini({disposition:'general',general_answer:'Unsupported outside knowledge',blocks:[]});
+ });
+ assert.deepEqual(await (await worker.fetch(req({question:'請問教材中怎麼說光合作用？'}),env)).json(),{kind:'course_missing'});
+ assert.equal(calls,0);
+ assert.deepEqual(await (await worker.fetch(req({question:'請問這份教材怎麼描述硬腦膜外血腫？'}),env)).json(),{kind:'course_missing'});
+ assert.equal(calls,1);
+});
 test('Configuration and preflight never expose credentials',async()=>{
  const {env,worker}=fixture();
  const url=new URL('/api/study/config',endpoint);

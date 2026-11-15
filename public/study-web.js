@@ -33,9 +33,10 @@
    result.append(label,text);return;
   }
   if(answer.kind!=='answer'){
-   result.textContent=answer.kind==='private_input'?'請勿輸入個人或病人資料。':'這題目前無法回答，請試著換個問法。';
+   result.textContent=answer.kind==='private_input'?'請勿輸入個人或病人資料。':answer.kind==='course_missing'?'目前可供問答的教材段落不足以回答這題，沒有用一般知識代答。':'這題目前無法回答，請試著換個問法。';
    return;
   }
+  if(answer.intro){const intro=document.createElement('p');intro.textContent=answer.intro;result.append(intro);}
   for(const block of answer.blocks){
    const item=document.createElement('section'),p=document.createElement('p'),quote=document.createElement('blockquote'),a=document.createElement('a');
    p.textContent=block.answer;quote.textContent=block.evidence;
