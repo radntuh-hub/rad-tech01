@@ -1,7 +1,6 @@
 import {createStudyAI} from './study-ai.mjs';
 import pages from './corpus.json' with {type:'json'};
 
-const ACTION='teaching_question';
 const bad=(status,message)=>Object.assign(new Error(message),{status});
 const compact=(n,fallback,max)=>{const x=Number(n);return Number.isInteger(x)&&x>0&&x<=max?x:fallback;};
 const json=(data,status,headers)=>Response.json(data,{status,headers});
@@ -42,7 +41,7 @@ export class CourseQuota {
  }
 }
 
-export function createWorker(fetcher=fetch){
+export function createWorker(fetcher=(...args)=>globalThis.fetch(...args)){
  return {async fetch(request,env){
   const url=new URL(request.url);
   if(!url.pathname.startsWith('/api/'))return env.ASSETS.fetch(request);
@@ -55,27 +54,18 @@ export function createWorker(fetcher=fetch){
    if(origin!==frontend||url.pathname!=='/api/study/ask')return reply({error:'不允許的請求。'},403);
    return new Response(null,{status:204,headers:{...headers,'Access-Control-Allow-Methods':'POST','Access-Control-Allow-Headers':'Content-Type'}});
   }
-  const enabled=Boolean(env.GEMINI_API_KEY&&env.TURNSTILE_SECRET_KEY&&env.TURNSTILE_SITE_KEY&&env.COURSE_QUOTA);
-  if(url.pathname==='/api/study/config'&&request.method==='GET')return reply({enabled,siteKey:enabled?env.TURNSTILE_SITE_KEY:''});
+  const enabled=Boolean(env.GEMINI_API_KEY&&env.COURSE_QUOTA);
+  if(url.pathname==='/api/study/config'&&request.method==='GET')return reply({enabled});
   if(url.pathname!=='/api/study/ask'||request.method!=='POST')return reply({error:'找不到功能。'},404);
   if(!enabled)return reply({error:'問 AI 尚未啟用。'},503);
   if(origin!==frontend)return reply({error:'請從課程網頁提問。'},403);
   try{
    const input=await readJSON(request);
-   const ticket=input?.verification;
-   if(typeof ticket!=='string'||!ticket||ticket.length>2048)throw bad(400,'請先完成防濫用驗證。');
    const ask=createStudyAI({
     pages,apiKey:env.GEMINI_API_KEY,provider:'gemini',fetcher,
     async beforeSend(){
-     const response=await fetcher('https://challenges.cloudflare.com/turnstile/v0/siteverify',{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret:env.TURNSTILE_SECRET_KEY,response:ticket}),
-      signal:AbortSignal.timeout(6000),redirect:'error'
-     });
-     if(!response.ok)throw bad(503,'驗證服務暫時無法使用，請稍後再試。');
-     const checked=await response.json();
-     if(checked?.success!==true||checked.action!==ACTION||checked.hostname!==new URL(frontend).hostname)throw bad(403,'驗證已失效，請重新驗證。');
      const quota=env.COURSE_QUOTA.get(env.COURSE_QUOTA.idFromName('course'));
-     const permit=await quota.fetch('https://course-quota.internal/consume');
+     const permit=await quota.fetch('https://course-quota.internal/consume').catch(()=>{throw bad(503,'問答用量服務暫時無法使用。');});
      if(permit.status===429)throw bad(429,'課程問答暫時達到用量上限，請稍後再試。');
      if(permit.status!==204)throw bad(503,'問答暫時無法使用。');
     }

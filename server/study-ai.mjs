@@ -75,7 +75,7 @@ export function createStudyAI({pages,apiKey,provider='openai',model=provider==='
    const inputText=JSON.stringify({question,sources});
    const format=responseFormat(sources);
    const res=await fetcher(gemini?'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent':'https://api.openai.com/v1/responses',{
-    method:'POST',redirect:'error',signal:AbortSignal.timeout(30000),
+    method:'POST',redirect:'manual',signal:AbortSignal.timeout(30000),
     headers:{...(gemini?{'x-goog-api-key':apiKey}:{Authorization:'Bearer '+apiKey}),'Content-Type':'application/json'},
     body:JSON.stringify(gemini?{
      systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:inputText}]}],
@@ -105,7 +105,7 @@ export function createStudyAI({pages,apiKey,provider='openai',model=provider==='
    return verify(result,sources);
   }catch(e){
    if(e.status)throw e;
-   fail(502,'AI 連線失敗或逾時，請改用教材查找。');
+   fail(502,'AI 連線失敗或逾時，請稍後再試。');
   }finally{inFlight=false;}
  };
 }
