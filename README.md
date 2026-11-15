@@ -1,6 +1,6 @@
 # 放射科學生版網站
 
-這份是 **學生播放版**：保留九病例、影片控制與最後一頁的匿名問卷，右上角新增「問 AI」。沒有本機編輯工具。[Cloudflare 網址](https://rad-tech01-student.rad-report-relay.workers.dev)。問答要在 Worker 加入 Gemini 金鑰才會啟用；原有 ChatGPT Sites 網站不受影響。
+這份是 **學生播放版**：保留九病例及影片控制，每個病例的末頁都有匿名問卷，右上角有「問 AI」。沒有本機編輯工具。[Cloudflare 網址](https://rad-tech01-student.rad-report-relay.workers.dev)。問答要在 Worker 加入 Gemini 金鑰才會啟用；原有 ChatGPT Sites 網站不受影響。
 
 ## 建議部署方式
 
