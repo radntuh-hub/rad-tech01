@@ -15,16 +15,17 @@
   const df=new Map(),rows=[];
   for(const page of pages){
    const title=tokens(page.title),parts=page.parts.map(text=>({text,terms:tokens(text)}));
-   const terms=new Set([...title,...parts.flatMap(p=>[...p.terms])]);
+   const chapter=tokens(page.chapter||''),body=tokens(page.search||'');
+   const terms=new Set([...title,...parts.flatMap(p=>[...p.terms]),...body,...chapter]);
    for(const term of terms)if(query.has(term))df.set(term,(df.get(term)||0)+1);
-   rows.push({page,title,parts});
+   rows.push({page,title,parts,body,chapter});
   }
   const weight=term=>Math.log(1+pages.length/(1+(df.get(term)||0)));
   const rank=set=>[...query].reduce((sum,term)=>sum+(set.has(term)?weight(term):0),0);
   const results=[];
-  for(const {page,title,parts} of rows){
+  for(const {page,title,parts,body,chapter} of rows){
    const best=parts.map(p=>({...p,score:rank(p.terms)})).sort((a,b)=>b.score-a.score)[0];
-   const titleScore=rank(title),score=(best?.score||0)+titleScore*.65;
+   const titleScore=rank(title),score=(best?.score||0)+titleScore+rank(body)*.24+rank(chapter)*.12;
    if(score>0)results.push({...page,excerpt:(best?.score?best.text:page.parts[0]||page.title).slice(0,420),score:score*(page.case===current?1.18:1)});
   }
   return results.sort((a,b)=>b.score-a.score).slice(0,3);

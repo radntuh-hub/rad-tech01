@@ -27,6 +27,20 @@
  }
  function show(answer){
   result.replaceChildren();
+  function slideLink(page){
+   const a=document.createElement('a');
+   a.href='#'+page.source;a.textContent=(page.chapter?page.chapter+' · ':'')+'第 '+page.source.split('/')[1]+' 頁 · '+page.title;
+   a.onclick=()=>dialog.close();return a;
+  }
+  function showLinks(links,note){
+   const heading=document.createElement('h3'),list=document.createElement('ul');
+   heading.textContent='教材頁面';result.append(heading);
+   if(note){const lead=document.createElement('p');lead.textContent=note;result.append(lead);}
+   for(const page of links){
+    const item=document.createElement('li');item.append(slideLink(page));list.append(item);
+   }
+   result.append(list);
+  }
   function showGeneral(text,heading,note){
    const label=document.createElement('h3'),body=document.createElement('p');
    label.textContent=heading;body.className='student-general-answer';body.textContent=text;
@@ -35,11 +49,14 @@
    result.append(body);
   }
   if(answer.kind==='general'){
+   if(answer.links?.length)showLinks(answer.links,'以下是搜尋到的相關頁面，不代表這些頁面已回答整個問題。');
    showGeneral(answer.answer,'一般知識（非教材引用）',answer.note);return;
   }
+  if(answer.kind==='course_links'){showLinks(answer.links,answer.note);return;}
   if(answer.kind!=='answer'){
    const messages={
     private_input:'請勿輸入個人或病人資料。',
+    course_not_found:'在目前教材中沒有找到對應頁面。可以試著用投影片上的英文術語或章節名稱搜尋。',
     course_missing:'目前可供問答的教材段落不足以回答這題。你選擇只依教材，因此未加入一般知識。',
     page_missing:'目前沒有這一頁可供 AI 引用的段落。可以輸入你想了解的投影片術語，我會找相關教材或提供一般解釋。'
    };
@@ -49,10 +66,10 @@
   const courseLabel=document.createElement('h3');courseLabel.textContent='教材對照';result.append(courseLabel);
   if(answer.intro){const intro=document.createElement('p');intro.textContent=answer.intro;result.append(intro);}
   for(const block of answer.blocks){
-   const item=document.createElement('section'),p=document.createElement('p'),quote=document.createElement('blockquote'),a=document.createElement('a');
+   const item=document.createElement('section'),p=document.createElement('p'),quote=document.createElement('blockquote');
    p.textContent=block.answer;quote.textContent=block.evidence;
-   a.href='#'+block.source;a.textContent='來源：第 '+block.source.split('/')[1]+' 頁 · '+block.title;
-   a.onclick=()=>dialog.close();item.append(p,quote,a);result.append(item);
+   const a=slideLink(block);a.textContent='來源：'+a.textContent;
+   item.append(p,quote,a);result.append(item);
   }
   if(answer.supplement)showGeneral(answer.supplement,'一般知識補充（非教材引用）');
  }

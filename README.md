@@ -24,12 +24,14 @@
 
 ## 資料與試用範圍
 
-可問教材與一般知識。教材題會參考從 26 張投影片選出的通用教學段落，並在「教材對照」附上經程式核對的原文與來源頁；其他回答另外標示「一般知識（非教材引用）」，不搜尋網路。不會把病例報告、媒體或本機編輯內容放入請求。頁面會提示免費方案的資料處理風險；本版不儲存提問或回覆，不再以 Cloudflare 計數。不要輸入病人或個人資訊。先僅供成年學員，不用於臨床診療。
+可問教材與一般知識。九個章節的 90 頁皆納入網站的教材搜尋：查「在哪一頁」會直接連到真實投影片，不需呼叫 Gemini。81 頁有核對過的教學摘錄，可由 Gemini 解說並在「教材對照」附上原文與來源頁。9 頁 English report 可以搜尋章節與頁面，原文只在投影片上閱讀。一般知識另外標示，不搜尋網路。
 
-提問提到「教材」時優先找原文；找不到足夠依據仍可給一般解釋，但會清楚區分來源。明說「只依教材」才會停用一般補充。「這頁在講什麼？」會參考目前投影片可用的引文；沒有收錄的頁面不會假裝已讀取。常用的「教材中有哪些腦出血類型」是跨病例總覽，直接從既有段落列出 EDH、SDH、SAH、hemorrhagic contusion，並另外列出 DAI 課堂提到的 microbleeds，不需要 Gemini 額度。
+問答不傳送病例報告原文、病人背景段落、媒體或整份索引至 Google。頁面會提示免費方案的資料處理風險；本版不儲存提問或回覆，不再以 Cloudflare 計數。不要輸入病人或個人資訊。先僅供成年學員，不用於臨床診療。
+
+提問提到「教材」時優先找原文；找不到足夠依據仍可給一般解釋，但會清楚區分來源。明說「只依教材」才會停用一般補充。「這頁在講什麼？」會參考目前投影片可用的摘錄；若在病例報告頁，會導回原頁，不會假裝已讀取。常用的「教材中有哪些腦出血類型」是跨病例總覽，直接從既有段落列出 EDH、SDH、SAH、hemorrhagic contusion，並另外列出 DAI 課堂提到的 microbleeds，不需要 Gemini 額度。
 
 問教材如何分類 Encephalomalacia 時，會直接對照 Contusion / SAH 第 7、8 頁，說明這裡教的是病程時間軸，而不是病理亞型。這個對照不需要 Gemini 額度。
 
-驗收：`node --test server/worker.test.mjs` 在無金鑰狀態用模擬服務測試。正式啟用後再測「EDH 和 SDH 有何不同？」（教材引用）與「什麼是光合作用？」（一般知識），並試問卷與影片。
+修改投影片後，檢查 `server/course-excerpts.tsv`（原有摘錄在 `server/corpus.json`），只加入可提供給 Gemini 的教學摘錄。用 `python3 scripts/build-course-index.py` 重新產生索引，再用 `node --test server/*.test.mjs` 驗證 HTML、索引、問答與問卷。正式站可試問「教材的 throat symptoms 或 mass 是在哪一頁？」。
 
 官方文件：[GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)、[Cloudflare Workers Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)、[Google Gemini 資料條款](https://ai.google.dev/gemini-api/terms)。

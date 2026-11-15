@@ -1,5 +1,5 @@
 import {createStudyAI} from './study-ai.mjs';
-import pages from './corpus.json' with {type:'json'};
+import pages from './course-index.json' with {type:'json'};
 
 const bad=(status,message)=>Object.assign(new Error(message),{status});
 const json=(data,status,headers)=>Response.json(data,{status,headers});

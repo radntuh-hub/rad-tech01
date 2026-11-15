@@ -191,9 +191,47 @@ test('Current-slide questions reuse approved excerpts but never accept client-su
  result=await (await worker.fetch(req({...prompt,question:'請只依教材解釋這頁。'}),env)).json();
  assert.equal(result.blocks[0].source,'edh/2');
  assert.equal(result.supplement,undefined);
- result=await (await worker.fetch(req({...prompt,currentPage:'9'}),env)).json();
+ result=await (await worker.fetch(req({...prompt,currentPage:'99'}),env)).json();
  assert.deepEqual(result,{kind:'page_missing'});
  assert.equal(calls,2);
+});
+test('Course location questions use actual titles across the deck without sending a request to Gemini',async()=>{
+ const {env,calls,worker}=fixture();
+ for(const question of [
+  '教材的 throat symptoms 或 mass 是在哪一頁？',
+  '教材哪幾頁有提到咽喉症狀？',
+  'Which slide mentions throat symptoms?'
+ ]){
+  const result=await (await worker.fetch(req({question,current:'edh'}),env)).json();
+  assert.equal(result.kind,'course_links',question);
+  assert.deepEqual(result.links[0],{
+   source:'npc/1',chapter:'Nasopharyngeal carcinoma',title:'看似一般的 throat symptoms，影像揭露什麼？'
+  });
+  if(question.includes('throat symptoms'))assert.deepEqual(result.links.map(p=>p.source),['npc/1']);
+ }
+ const absent=await (await worker.fetch(req({question:'教材第幾頁提到光合作用？'}),env)).json();
+ assert.deepEqual(absent,{kind:'course_not_found'});
+ const report=await (await worker.fetch(req({question:'這一頁在講什麼？',current:'npc',currentPage:'5'}),env)).json();
+ assert.equal(report.links[0].source,'npc/5');
+ assert.equal(report.kind,'course_links');
+ assert.deepEqual(calls,[]);
+});
+test('Explanations can use an indexed former gap and never send the case history or search index',async()=>{
+ const {env}=fixture();
+ const worker=createWorker(async(_,options)=>{
+  const {sources}=JSON.parse(JSON.parse(options.body).contents[0].parts[0].text);
+  const p=sources.find(s=>s.id==='npc/1');
+  assert.ok(p);
+  assert.match(p.passages[0],/Mass 在哪裡/);
+  assert.ok(!JSON.stringify(sources).includes('77 歲'));
+  assert.ok(!sources.some(source=>'search' in source||'excerpt' in source));
+  return gemini({disposition:'answer',general_answer:'',blocks:[{
+   source_id:p.id,passage_index:0,answer:'這頁請讀者先看 mass 的位置與延伸路徑。'
+  }]});
+ });
+ const result=await (await worker.fetch(req({question:'教材中的 throat symptoms 和 mass 要看哪些重點？'}),env)).json();
+ assert.equal(result.blocks?.[0]?.source,'npc/1');
+ assert.equal(result.blocks[0].chapter,'Nasopharyngeal carcinoma');
 });
 test('Configuration and preflight never expose credentials',async()=>{
  const {env,worker}=fixture();

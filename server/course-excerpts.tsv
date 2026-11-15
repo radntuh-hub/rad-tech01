@@ -1,0 +1,63 @@
+# Additional reviewed teaching excerpts. The build checks the text against the slide.
+sinus/1	看到 sinus opacification，下一個問題是「為什麼在這一側？」
+sinus/3	觀察是 isolated sinus disease，還是同側 drainage pathway 相關的 pattern。
+sinus/7	有可治療的 dental pathology 時，只反覆處理 sinus symptoms 或只用 antibiotics，可能無法解決來源。
+sinus/8	Dental pain 可以缺席；不能因為沒有 toothache，就忽略 odontogenic source。
+sinus/9	Periapical lucency 與相鄰 floor defect，將 dental pathology 和 sinus disease 連在一起。Opacification 本身不交代 source。
+sinus/10	報告不只說哪個 sinus 不正常，也提示病因可能在 dental source。
+npc/1	Mass 在哪裡？沿哪些路徑延伸？報告中的 intracranial invasion 對 staging 有什麼意義？
+npc/2	比較兩側 nasopharynx 的 symmetry。
+npc/3	MRI 的角色包含描繪 local extent、skull base involvement 與 perineural spread。
+npc/7	AJCC Version 9 將 intracranial extension，以及明確的 cranial nerve involvement，列為 T4 criteria。
+npc/7	T 看 primary tumor extent；N 看 regional lymph nodes；M 看 distant metastasis。T4 不等於一句「stage IV」。
+npc/9	Intracranial invasion 明確改變 local extent 的判讀；signal 與 effusion 是其他層次的線索。
+npc/10	臨床讀者要掌握 local extent、nodal disease 與 critical structures。
+infection/1	閱讀影像前，先把 airway risk 放在心上。
+infection/2	Radiograph 的 soft tissue thickening 無法單獨區分 abscess 與其他原因。
+infection/3	觀察 gas、collections、airway 與 inferior extent。
+infection/4	沿連續切面確認範圍，而不是只用表面的 swelling 判斷。
+infection/7	遇到 airway compromise 或 unstable haemodynamics，先穩定病人與確保 airway，再安排 imaging。
+infection/9	Thoracic inlet 是 extent 的描述，提示需要繼續評估 inferior spread，不等於已證實 mediastinitis。
+infection/10	讀懂報告，是為了辨識 urgency、extent 與需要立即溝通的 findings。
+ranula/1	從 location 與 continuity 開始，不急著只記住病名。
+ranula/3	追蹤 sublingual component 和 submandibular component 是否連續。
+ranula/7	把 location、contents 和 surrounding tissue 放在一起看。
+ranula/7	Dermoid cyst
+ranula/7	內部 fat globules 可提供線索。
+ranula/7	Epidermoid cyst
+ranula/7	MRI 上的 diffusion restriction 有助區分。
+ranula/8	這項 surrounding inflammatory change 沒有出現；不是把所有 infection 一次排除。
+ranula/9	Negative imaging finding 是特定證據的缺乏，不等於排除所有 infection。Clinical presentation 仍然重要。
+ranula/10	讀懂 origin 與 extent，比只看到 “ranula” 更有用。
+edh/1	先定位出血：extra-axial 還是 intra-axial？
+edh/1	再看 mass effect，而不只看血塊形狀。
+edh/3	比較兩側 lateral ventricles 的大小與受壓情形。
+edh/3	找 midline structures 是否偏移。
+edh/6	一個病人可以同時有多種類型的 traumatic hemorrhage。完整閱讀報告，才能知道是不是只有單一 lesion。
+edh/7	Size、thickness、volume 與 mass effect 是不同資訊。
+edh/8	是否有 ventricular compression、midline shift 或 herniation？
+edh/9	Ventricular compression 與 midline shift 描述 mass effect；同時仍需整合 neurologic status 與其他 traumatic injuries。
+edh/10	EDH 的重點是 compartment、extent 與 mass effect。
+sdh/1	外傷後的症狀與影像，必須放在同一條時間軸上。
+sdh/3	比較 midline、ventricles 與 cisterns。
+sdh/4	閱讀時應保留這個不確定性。
+sdh/6	一個 compartment 改善，不等於所有 traumatic injuries 都改善。
+sdh/8	表示發現尚不確定，不應轉述成確定的 diffuse SAH。
+sdh/9	Follow-up 必須逐項比較 extra-axial hemorrhage、contusion、edema 與 mass effect；不能由單一改善項目推論整體安全。
+sdh/10	Follow-up 要比較不同 injury components。
+contusion/1	第一次 CT 是病程的起點，不是最後的答案。
+contusion/3	區分 parenchymal hemorrhage 與 sulcal blood。
+contusion/4	請以解剖位置對照，而不是直接比較相同影格編號。
+dai/1	CT 上看得到的 hemorrhage，不一定代表全部的 brain injury。
+dai/2	不能把 air 當成初始 traumatic hemorrhage，也不能用它解釋所有意識變化。
+dai/6	DAI 的辨認依賴 distribution 與多序列資訊。
+dai/7	兩次影像的 slice thickness、位置與參數可能不同，不能以相同影格編號作精準配對。
+dai/8	是 hemorrhagic component 的線索，不代表所有 axonal injury 都可見。
+dai/9	MRI 可補上 DAI 的 distribution 與不同 tissue changes，但不是個人預後的單一決定工具。
+dai/10	DAI 可以有 hemorrhagic 與 non-hemorrhagic components。
+cspine/1	Bone injury、ligament injury 與 cord injury，要分開檢查。
+cspine/3	MRI 上 fracture line 不明顯，並不會推翻 CT 已顯示的 fracture。
+cspine/7	保留 suspected，不改寫成已確認 complete rupture。
+cspine/8	「沒有 cord injury」與「沒有需要處理的 cervical injury」並不相同。
+cspine/9	不能由 normal cord 推論 mechanical stability。
+cspine/10	CT 與 MRI 回答互補的問題。
