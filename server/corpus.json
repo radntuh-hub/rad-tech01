@@ -1,0 +1,124 @@
+[
+  {
+    "case": "sinus",
+    "page": "2",
+    "title": "Maxillary sinus floor 與 tooth roots 的關係",
+    "parts": [
+      "Maxillary molars / premolars",
+      "與 maxillary sinus floor 的相鄰關係，讓 dental pathology 成為 sinus inflammation 的可能來源。"
+    ]
+  },
+  {
+    "case": "sinus",
+    "page": "4",
+    "title": "Periapical lucency 是重要線索",
+    "parts": [
+      "從 tooth、periapical region 一路追到 sinus floor，思考 dental source 與 sinus disease 能否連成同一個過程。"
+    ]
+  },
+  {
+    "case": "npc",
+    "page": "4",
+    "title": "Foramen ovale：沿 CN V3 向上追蹤",
+    "parts": [
+      "不要只找 mass 的邊界，也要追蹤它可能走的 anatomical route。"
+    ]
+  },
+  {
+    "case": "npc",
+    "page": "8",
+    "title": "Mastoid effusion 與 Level II LAP 的訊息",
+    "parts": [
+      "NPC 可藉由 Eustachian tube obstruction 造成 middle ear / mastoid fluid；看到 unilateral effusion 時，nasopharynx 值得一起檢查。"
+    ]
+  },
+  {
+    "case": "infection",
+    "page": "8",
+    "title": "報告寫到 thoracic inlet，還要想到什麼？",
+    "parts": [
+      "Deep neck infection 可向下延伸，造成 descending mediastinitis。",
+      "也要留意 airway compromise 與 vascular complications，例如 internal jugular vein thrombosis。"
+    ]
+  },
+  {
+    "case": "ranula",
+    "page": "2",
+    "title": "Mylohyoid 是定位的關鍵",
+    "parts": [
+      "Sublingual space",
+      "位於 mylohyoid 上方，包含 sublingual gland。",
+      "Submandibular space",
+      "位於 mylohyoid 下方，可經肌肉 posterior free edge 與 sublingual space 相通。"
+    ]
+  },
+  {
+    "case": "ranula",
+    "page": "4",
+    "title": "Simple 與 plunging：差別在 extent",
+    "parts": [
+      "Simple ranula",
+      "侷限在 sublingual space。",
+      "Plunging / diving ranula",
+      "延伸到 submandibular space，可沿 mylohyoid posterior free edge 或穿過 mylohyoid defect。",
+      "多數 ranula 是與 salivary extravasation 有關的 pseudocyst。名稱相同，extent 可以很不一樣。"
+    ]
+  },
+  {
+    "case": "edh",
+    "page": "2",
+    "title": "EDH：從所在的 compartment 開始",
+    "parts": [
+      "Epidural / extradural hematoma",
+      "位於 skull inner table 與 dura 之間；典型外觀為 lentiform 或 biconvex。",
+      "通常受到 sutural attachment 限制，但有例外。形狀與邊界是定位線索，不是單獨成立的診斷規則。"
+    ]
+  },
+  {
+    "case": "sdh",
+    "page": "2",
+    "title": "SDH：沿著 cerebral surface 展開",
+    "parts": [
+      "Subdural hematoma",
+      "位於 dura 與 arachnoid 的介面，典型呈 crescentic。",
+      "可跨越 sutures，但通常受 dural reflections 限制。形狀和分布要連續看，不能只憑單張影像。"
+    ]
+  },
+  {
+    "case": "contusion",
+    "page": "2",
+    "title": "Contusion 與 SAH，分別在哪裡？",
+    "parts": [
+      "Hemorrhagic contusion",
+      "出血與 edema 位於受傷的 brain parenchyma，常見於 frontal 或 temporal regions。",
+      "Subarachnoid hemorrhage"
+    ]
+  },
+  {
+    "case": "dai",
+    "page": "4",
+    "title": "不同 MRI sequence，提供不同線索",
+    "parts": [
+      "FLAIR：看 white matter 的 abnormal high signal。",
+      "ADC：查看 diffusion 的變化，不能把所有暗點都當成同一種病灶。",
+      "Susceptibility-sensitive MRI：尋找 microbleeds；也要區分 vessels 與 artifacts。"
+    ]
+  },
+  {
+    "case": "cspine",
+    "page": "2",
+    "title": "CT 與 MRI：各自擅長看什麼？",
+    "parts": [
+      "CT / Bone window",
+      "Fracture、cortical disruption 與 alignment。"
+    ]
+  },
+  {
+    "case": "cspine",
+    "page": "4",
+    "title": "STIR：把視線移到 ligaments 與 soft tissue",
+    "parts": [
+      "High signal 是 injury 的線索，判讀仍要連同 anatomy、CT 與其他 MRI sequences。"
+    ]
+  }
+]

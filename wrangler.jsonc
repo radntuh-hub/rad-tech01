@@ -1,0 +1,23 @@
+{
+  "name": "rad-tech01-student",
+  "account_id": "27038971cc4e08b4089b6283e59f7453",
+  "main": "server/worker.mjs",
+  "compatibility_date": "2026-11-15",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    "FRONTEND_ORIGIN": "",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAGBldf-UzM8yMhT0",
+    "DAILY_QUESTION_LIMIT": "20",
+    "MINUTE_QUESTION_LIMIT": "4"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "COURSE_QUOTA", "class_name": "CourseQuota" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CourseQuota"] }],
+  "observability": { "enabled": false }
+}
