@@ -178,11 +178,11 @@ export function createStudyAI({pages,apiKey,provider='openai',model=provider==='
   }
   if(courseOnly&&!sources.length)return keepLinks?withoutExplanation():courseMissing();
   try{
-   const inputText=JSON.stringify({question,sources,...(asksCurrentSlide?{current_slide:activePage?activePage.case+'/'+activePage.page:null}:{})});
+   const inputText=JSON.stringify({question:locating?lookupQuestion:question,sources,...(asksCurrentSlide?{current_slide:activePage?activePage.case+'/'+activePage.page:null}:{})});
    const format=responseFormat(sources,courseOnly);
    const taskInstructions=instructions
     +(courseOnly?'\n使用者要求只依教材回答；general_answer 必須留空，證據不足請標為 unanswered。':'')
-    +(locating?'\n網站會另外顯示已查到的真實頁碼。請專注回答補充說明，先用教材解釋，再把課外背景放在 general_answer（若使用者沒要求只依教材）。':'')
+    +(locating?'\n只解釋主題，不要在回答內談頁碼、教材編排或網站設定。先用教材解釋，再把一到三項具體的課外補充放在 general_answer（若使用者沒要求只依教材）。':'')
     +(asksCurrentSlide?'\n若問本頁，只有 current_slide 對應來源是目前投影片；如果沒有對應段落，不要把其他投影片說成這一頁。':'');
    const res=await fetcher(gemini?'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent':'https://api.openai.com/v1/responses',{
     method:'POST',redirect:'manual',signal:AbortSignal.timeout(30000),

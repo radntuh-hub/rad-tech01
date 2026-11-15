@@ -221,7 +221,8 @@ test('Mixed location and explanation requests return the exact slide and a suppl
  const {env}=fixture();let calls=0;
  const worker=createWorker(async(_,options)=>{
   calls++;
-  const {sources}=JSON.parse(JSON.parse(options.body).contents[0].parts[0].text);
+  const {question,sources}=JSON.parse(JSON.parse(options.body).contents[0].parts[0].text);
+  assert.doesNotMatch(question,/第幾頁/);
   assert.equal(sources[0].id,'sinus/8');
   const index=sources[0].passages.indexOf('Unilateral maxillary sinus opacification');
   assert.ok(index>=0);
