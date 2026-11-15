@@ -27,13 +27,23 @@
  }
  function show(answer){
   result.replaceChildren();
+  function showGeneral(text,heading,note){
+   const label=document.createElement('h3'),body=document.createElement('p');
+   label.textContent=heading;body.className='student-general-answer';body.textContent=text;
+   result.append(label);
+   if(note){const lead=document.createElement('p');lead.className='student-study-note';lead.textContent=note;result.append(lead);}
+   result.append(body);
+  }
   if(answer.kind==='general'){
-   const label=document.createElement('h3'),text=document.createElement('p');
-   label.textContent='一般知識（非教材引用）';text.className='student-general-answer';text.textContent=answer.answer;
-   result.append(label,text);return;
+   showGeneral(answer.answer,'一般知識（非教材引用）',answer.note);return;
   }
   if(answer.kind!=='answer'){
-   result.textContent=answer.kind==='private_input'?'請勿輸入個人或病人資料。':answer.kind==='course_missing'?'目前可供問答的教材段落不足以回答這題，沒有用一般知識代答。':'這題目前無法回答，請試著換個問法。';
+   const messages={
+    private_input:'請勿輸入個人或病人資料。',
+    course_missing:'目前可供問答的教材段落不足以回答這題。你選擇只依教材，因此未加入一般知識。',
+    page_missing:'目前沒有這一頁可供 AI 引用的段落。可以輸入你想了解的投影片術語，我會找相關教材或提供一般解釋。'
+   };
+   result.textContent=messages[answer.kind]||'這題目前無法回答，請試著換個問法。';
    return;
   }
   if(answer.intro){const intro=document.createElement('p');intro.textContent=answer.intro;result.append(intro);}
@@ -43,14 +53,15 @@
    a.href='#'+block.source;a.textContent='來源：第 '+block.source.split('/')[1]+' 頁 · '+block.title;
    a.onclick=()=>dialog.close();item.append(p,quote,a);result.append(item);
   }
+  if(answer.supplement)showGeneral(answer.supplement,'一般知識補充（非教材引用）');
  }
  form.onsubmit=async e=>{
   e.preventDefault();if(busy||!enabled||!input.value.trim())return;
   const ticket=cycle;busy=true;refresh();result.textContent='正在準備回答…';
   try{
-   const current=document.querySelector('article:not([hidden])')?.dataset.case;
+   const slide=document.querySelector('article:not([hidden])')?.dataset;
    const response=await fetch(endpoint+'/api/study/ask',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({question:input.value,current}),signal:AbortSignal.timeout(42000)});
+    body:JSON.stringify({question:input.value,current:slide?.case,currentPage:slide?.pageInCase}),signal:AbortSignal.timeout(42000)});
    const answer=await response.json();
    if(!response.ok)throw Error(answer.error||'目前無法回答。');
    if(ticket===cycle&&dialog.open)show(answer);

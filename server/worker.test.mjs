@@ -95,10 +95,42 @@ test('Explicit course-only requests cannot fall back to general knowledge',async
   assert.ok(sources.some(s=>s.id==='edh/2'));
   return gemini({disposition:'general',general_answer:'Unsupported outside knowledge',blocks:[]});
  });
- assert.deepEqual(await (await worker.fetch(req({question:'請問教材中怎麼說光合作用？'}),env)).json(),{kind:'course_missing'});
+ assert.deepEqual(await (await worker.fetch(req({question:'請只依教材說明光合作用。'}),env)).json(),{kind:'course_missing'});
  assert.equal(calls,0);
- assert.deepEqual(await (await worker.fetch(req({question:'請問這份教材怎麼描述硬腦膜外血腫？'}),env)).json(),{kind:'course_missing'});
+ assert.deepEqual(await (await worker.fetch(req({question:'請只依這份教材描述硬腦膜外血腫。'}),env)).json(),{kind:'course_missing'});
  assert.equal(calls,1);
+});
+test('Course wording without an explicit restriction still gets a labeled general answer',async()=>{
+ const {env,calls,worker}=fixture();
+ const res=await worker.fetch(req({question:'請問教材中怎麼說光合作用？'}),env);
+ const result=await res.json();
+ assert.equal(result.kind,'general');
+ assert.match(result.note,/以下是一般知識補充/);
+ assert.match(result.answer,/光合作用/);
+ assert.deepEqual(calls,['model']);
+});
+test('Current-slide questions reuse approved excerpts but never accept client-supplied slides',async()=>{
+ const {env}=fixture();let calls=0;
+ const worker=createWorker(async(_,options)=>{
+  calls++;
+  const {sources,current_slide}=JSON.parse(JSON.parse(options.body).contents[0].parts[0].text);
+  assert.equal(current_slide,'edh/2');
+  assert.equal(sources[0].id,current_slide);
+  assert.ok(!JSON.stringify(sources).includes('private addition'));
+  return gemini({disposition:'answer',general_answer:'這是教材以外的補充。',blocks:[{
+   source_id:current_slide,passage_index:1,answer:'這一頁介紹 EDH 的位置與典型外觀。'
+  }]});
+ });
+ const prompt={question:'這頁在講什麼？',current:'edh',currentPage:'2',sources:['private addition']};
+ let result=await (await worker.fetch(req(prompt),env)).json();
+ assert.equal(result.blocks[0].source,'edh/2');
+ assert.equal(result.supplement,'這是教材以外的補充。');
+ result=await (await worker.fetch(req({...prompt,question:'請只依教材解釋這頁。'}),env)).json();
+ assert.equal(result.blocks[0].source,'edh/2');
+ assert.equal(result.supplement,undefined);
+ result=await (await worker.fetch(req({...prompt,currentPage:'9'}),env)).json();
+ assert.deepEqual(result,{kind:'page_missing'});
+ assert.equal(calls,2);
 });
 test('Configuration and preflight never expose credentials',async()=>{
  const {env,worker}=fixture();
