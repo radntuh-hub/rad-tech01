@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import arrows from '../public/arrows.js';
+import slideTools from '../public/slide-edits.js';
 
 const here=path.dirname(fileURLToPath(import.meta.url)),publicDir=path.resolve(here,'../public');
 const digest=value=>createHash('sha256').update(value).digest('hex');
@@ -32,13 +33,24 @@ export async function readCourse(dir=publicDir){
 }
 
 export function merge(packs,manifest){
- const items=new Map();
- for(const pack of packs)for(const arrow of arrows.validate(pack,manifest).arrows){
-  if(items.has(arrow.id)&&JSON.stringify(items.get(arrow.id))!==JSON.stringify(arrow))
-   throw Error('不同標註檔包含同一支箭頭的不同版本，請只保留要採用的檔案。');
-  items.set(arrow.id,arrow);
+ const items=new Map(),slides=slideTools.blank();
+ for(const pack of packs){
+  for(const arrow of arrows.validate(pack,manifest).arrows){
+   if(items.has(arrow.id)&&JSON.stringify(items.get(arrow.id))!==JSON.stringify(arrow))
+    throw Error('不同標註檔包含同一支箭頭的不同版本，請只保留要採用的檔案。');
+   items.set(arrow.id,arrow);
+  }
+  for(const [group,changes] of Object.entries(slideTools.validate(pack.slides,manifest.pages))){
+   for(const [id,value] of Object.entries(changes)){
+    if(Object.hasOwn(slides[group],id)&&JSON.stringify(slides[group][id])!==JSON.stringify(value))
+     throw Error('不同草稿對同一項教材內容有衝突，請確認採用的版本。');
+    slides[group][id]=value;
+   }
+  }
  }
- return arrows.validate({format:arrows.format,version:1,course:manifest.course,arrows:[...items.values()]},manifest);
+ const data=arrows.validate({format:arrows.format,version:1,course:manifest.course,arrows:[...items.values()]},manifest);
+ const checked=slideTools.validate(slides,manifest.pages);
+ return slideTools.nonempty(checked)?{...data,slides:checked}:data;
 }
 
 export async function build(mode,output,inputs=[]){
@@ -57,9 +69,13 @@ export async function build(mode,output,inputs=[]){
  replace('<link rel="stylesheet" href="study-web.css">\n<script defer src="study-config.js"></script>\n<script defer src="study-web.js"></script>','');
  replace('href="/arrows.css"','href="arrows.css"');
  replace('src="/arrows.js"','src="arrows.js"');
+ replace('href="/slide-edits.css"','href="slide-edits.css"');
+ replace('src="/slide-edits.js"','src="slide-edits.js"');
  replace('</head>',(teacher?'<script>window.TeacherArrowManifest='+serialize(manifest)+';</script><script src="teacher.js"></script>':'')+'</head>');
- replace("if(!teacherArrows&&location.protocol!=='file:')fetch('/api/arrows/published')\n .then(r=>r.ok?r.json():null).then(data=>{if(Array.isArray(data?.arrows))videoArrows.replace(data.arrows);}).catch(()=>{});",
-  'videoArrows.replace('+serialize(annotations.arrows)+');');
+ const webSource=html.match(/if\(!teacherArrows&&location\.protocol!=='file:'\)fetch\('\/api\/arrows\/published'\)[\s\S]*?\.catch\(\(\)=>\{\}\);/)?.[0];
+ if(!webSource)throw Error('Missing published annotation loader.');
+ replace(webSource,'videoArrows.replace('+serialize(annotations.arrows)+');'+
+  (annotations.slides?'slideEdits?.replace('+serialize(annotations.slides)+');':''));
  if(teacher)replace('<title>Radiology｜九病例課後補充</title>','<title>Radiology｜教師影片箭頭標註</title>');
 
  // Refuse to overwrite any existing delivery or teacher work.
@@ -70,7 +86,7 @@ export async function build(mode,output,inputs=[]){
   await fs.copyFile(path.join(publicDir,file),path.join(dest,file));
  }
  await fs.writeFile(path.join(dest,teacher?'開啟教師標註.html':'index.html'),html);
- for(const file of ['arrows.js','arrows.css'])await fs.copyFile(path.join(publicDir,file),path.join(dest,file));
+ for(const file of ['arrows.js','arrows.css','slide-edits.js','slide-edits.css'])await fs.copyFile(path.join(publicDir,file),path.join(dest,file));
  if(teacher){
   await fs.copyFile(path.join(publicDir,'teacher/editor.js'),path.join(dest,'teacher.js'));
   await fs.copyFile(path.join(here,'操作說明.txt'),path.join(dest,'操作說明.txt'));

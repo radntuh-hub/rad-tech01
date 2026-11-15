@@ -19,9 +19,10 @@ assert.equal((await (await status('/api/study/config',200)).json()).enabled,true
 assert.match(await (await status('/teacher/',200)).text(),/教師或管理者密碼/);
 await status('/api/arrows/draft',401);
 await status('/teacher/editor.js',401);
+await status('/teacher/content.js',401);
 for(const [label,role] of [['教師密碼','teacher'],['管理者密碼','admin']]){
  const password=credentials.split('\n').find(line=>line.startsWith(label))?.split('：').at(-1);
- if(!password||!/^[A-Za-z0-9_-]{32}$/.test(password))throw Error('Private login document is not in the expected format.');
+ if(!password||!/^\S{1,128}$/.test(password))throw Error('Private login document is not in the expected format.');
  const session=await status('/teacher/login',303,{method:'POST',headers:{Origin:origin},
   body:new URLSearchParams({password})});
  const cookie=session.headers.get('set-cookie');
@@ -35,6 +36,7 @@ for(const [label,role] of [['教師密碼','teacher'],['管理者密碼','admin'
  const page=await privatePage.text();
  assert.ok(page.includes('TeacherArrowInitial')&&page.includes('/teacher/online.js'));
  await status('/teacher/editor.js',200,{headers});
+ await status('/teacher/content.js',200,{headers});
  const post=(body,site=origin)=>({method:'POST',headers:{...headers,Origin:site,'Content-Type':'application/json'},body:JSON.stringify(body)});
  if(role==='teacher'){
   await status('/api/arrows/draft',403,post({revision:draft.draft.revision,data:draft.draft.data},'https://external.invalid'));

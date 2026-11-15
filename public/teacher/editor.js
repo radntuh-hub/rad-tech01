@@ -4,13 +4,15 @@
  const makeButton=(text,action)=>{
   const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=action;return b;
  };
- function start(player,manifest,media,online){
+ function start(player,manifest,media,online,slideEdits){
   const controls=new WeakMap(),header=document.querySelector('header');
   const status=document.createElement('div');status.className='teacher-arrow-status';status.setAttribute('role','status');
   header.append(status);
   const message=(text,error=false)=>{status.textContent=text;status.toggleAttribute('data-error',error);};
   message('教師標註版 · 到有影片的頁面，使用播放器下方的「畫箭頭」。');
-  const pack=()=>({format,version:1,course:manifest.course,arrows:player.arrows});
+  const content=online&&window.TeacherSlideEditor?.start(slideEdits,message);
+  const pack=()=>({format,version:1,course:manifest.course,arrows:player.arrows,
+   ...(slideEdits?.changes?{slides:slideEdits.changes}:{})});
   const serialized=()=>JSON.stringify(pack());
   let saved=serialized(),active=null,drag=null;
   const dirty=()=>saved!==serialized();
@@ -19,7 +21,7 @@
   function exportFile(){
    const url=URL.createObjectURL(new Blob([JSON.stringify(pack(),null,2)+'\n'],{type:'application/json'}));
    const link=document.createElement('a');link.href=url;
-   link.download='教師影片標註-'+new Date().toISOString().slice(0,10)+'.json';
+   link.download=(online?'教師教材草稿-':'教師影片標註-')+new Date().toISOString().slice(0,10)+'.json';
    document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
    if(!online)saved=serialized();
    message('已送出標註檔下載。'+(online?'下載檔案不會儲存線上草稿。':'請到「下載項目」確認 JSON 檔案。'));
@@ -28,15 +30,17 @@
    const file=fileInput.files[0];fileInput.value='';if(!file)return;
    try{
     if(file.size>1024*1024)throw Error('標註檔太大，請選擇本工具匯出的 JSON。');
-    const data=validate(JSON.parse(await file.text()),manifest);
-    if(dirty()&&!window.confirm('匯入會取代目前未下載的標註。確定繼續嗎？'))return;
-    cancel();player.replace(data.arrows);if(!online)saved=serialized();refresh();
+    const payload=JSON.parse(await file.text()),data=validate(payload,manifest);
+    if(dirty()&&!window.confirm('匯入會取代目前未儲存的變更。確定繼續嗎？'))return;
+    cancel();
+    if(payload.slides!==undefined)slideEdits?.replace(payload.slides);
+    player.replace(data.arrows);if(!online)saved=serialized();refresh();content?.refresh();
     message('已匯入 '+data.arrows.length+' 個箭頭。'+(online?'請儲存草稿。':''));
    }catch(e){message('無法匯入：'+(e instanceof SyntaxError?'請選擇有效的 JSON 標註檔。':e.message),true);}
   };
   const options=online?online.connect({
    pack,dirty,message,
-   load(data){cancel();player.replace(validate(data,manifest).arrows);saved=serialized();refresh();},
+   load(data){cancel();slideEdits?.replace(data.slides);player.replace(validate(data,manifest).arrows);saved=serialized();refresh();content?.refresh();},
    markSaved(data){saved=JSON.stringify(data);}
   }):[];
   for(const button of options)button.dataset.teacherAction='';

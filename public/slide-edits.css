@@ -1,0 +1,22 @@
+.deck-edited-size { font-size: var(--deck-edit-size) !important; }
+.deck-edited-color { color: var(--deck-edit-color) !important; }
+.deck-edited-weight { font-weight: var(--deck-edit-weight) !important; }
+.deck-edited-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
+.deck-edited-position { translate: var(--deck-edit-x, 0px) var(--deck-edit-y, 0px); }
+.deck-edited-fit { width: fit-content; max-width: 100%; }
+.deck-teacher-selected { outline: 2px solid #198374; outline-offset: 2px; }
+.deck-teacher-moving { cursor: move; touch-action: none; }
+.deck-teacher-drawing, .deck-teacher-drawing .image-open { cursor: crosshair; touch-action: none; }
+.deck-annotated-picture, .deck-zoom-picture { position: relative; }
+.deck-image-arrow-layer { position: absolute; z-index: 2; pointer-events: none; overflow: visible; }
+.deck-image-arrow-layer[hidden] { display: none; }
+.content-editor { padding: 8px 12px; background: #edf7f3; color: #173731; border-bottom: 1px solid #c0d7d0; max-height: 34vh; overflow: auto; }
+.content-editor [hidden], .content-editor[hidden] { display: none; }
+.content-editor-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.content-editor-controls label { display: inline-flex; align-items: center; gap: 4px; }
+.content-editor input[type=number] { width: 4.5rem; }
+.content-editor textarea { display: block; box-sizing: border-box; width: 100%; margin: 6px 0; min-height: 3.5rem; font: inherit; }
+@media (max-width: 540px) {
+  .deck-edited-position { translate: none; }
+  .deck-edited-fit { width: auto; }
+}

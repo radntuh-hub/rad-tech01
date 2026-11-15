@@ -57,6 +57,7 @@ test('Unauthenticated students cannot see a draft, teacher page, or editor scrip
  assert.equal(login.headers.get('Referrer-Policy'),'same-origin');
  assert.match(await login.text(),/教師或管理者密碼/);
  assert.equal((await request('/teacher/editor.js')).status,401);
+ assert.equal((await request('/teacher/content.js')).status,401);
  assert.equal((await request('/api/arrows/draft')).status,401);
  assert.equal((await request('/api/arrows/publish',{body:{revision:0,liveRevision:0}})).status,401);
  assert.deepEqual(await (await request('/api/arrows/published')).json(),{...pack([]),revision:0});
@@ -74,17 +75,32 @@ test('Roles, save conflicts, pending vs public, targeted frames, and rollback',a
  assert.equal(wrongOrigin.status,403);
  const invalid=await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data:pack([{...example,last:456}])}});
  assert.equal(invalid.status,400);
- const save=await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data:pack([example])}});
+ const slides={text:{'edh/2:text:0':'測試標題'},layout:{'sinus/1:image:0':{x:.12,y:-.08}},styles:{'edh/2:text:0':{size:34,color:'#2a645e',bold:true}},
+  imageArrows:{'qa-photo-1':{image:'sinus/1:image:0',x1:.1,y1:.2,x2:.51,y2:.6,color:'#ffda36'}}};
+ const data={...pack([example]),slides};
+ for(const bad of [
+  {...slides,layout:{'fake/1:image:0':{x:0,y:0}}},
+  {...slides,layout:{'edh/2:text:0':{x:2,y:0}}},
+  {...slides,text:{'edh/2:image:0':'not a text node'}},
+  {...slides,imageArrows:{'qa-photo-1':{...slides.imageArrows['qa-photo-1'],image:'sinus/1:text:0'}}},
+  {...slides,imageArrows:{'qa-photo-1':{...slides.imageArrows['qa-photo-1'],x2:-.5}}},
+  {...slides,styles:{'edh/2:text:0':{color:'url(https://example.com)'}}}
+ ]){
+  assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data:{...data,slides:bad}}})).status,400);
+ }
+ const save=await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data}});
+ assert.equal(save.status,200);
  assert.equal((await save.json()).draft.revision,1);
+ assert.deepEqual((await (await request('/api/arrows/draft',{cookie:admin})).json()).draft.data.slides,slides);
  assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data:pack([])}})).status,409);
  assert.equal((await request('/api/arrows/publish',{cookie:teacher,body:{revision:1,liveRevision:0}})).status,403);
- assert.deepEqual((await (await request('/api/arrows/published')).json()).arrows,[]);
+ assert.deepEqual(await (await request('/api/arrows/published')).json(),{...pack([]),revision:0});
  const published=await request('/api/arrows/publish',{cookie:admin,body:{revision:1,liveRevision:0}});
  assert.equal((await published.json()).live.revision,1);
- assert.deepEqual((await (await request('/api/arrows/published')).json()).arrows,[example]);
+ assert.deepEqual(await (await request('/api/arrows/published')).json(),{...data,revision:1});
  const rollback=await request('/api/arrows/rollback',{cookie:admin,body:{revision:1,liveRevision:1}});
  assert.equal((await rollback.json()).draft.revision,1);
- assert.deepEqual((await (await request('/api/arrows/published')).json()).arrows,[]);
+ assert.deepEqual(await (await request('/api/arrows/published')).json(),{...pack([]),revision:2});
  await request('/api/arrows/logout',{cookie:teacher,body:{}});
  assert.equal((await request('/api/arrows/draft',{cookie:teacher})).status,401);
 });

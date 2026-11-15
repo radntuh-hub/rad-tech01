@@ -1,9 +1,14 @@
 import manifest from './arrow-manifest.json' with {type:'json'};
 import arrowTools from '../public/arrows.js';
+import slideTools from '../public/slide-edits.js';
 
 const cookieName='__Host-rad-teacher';
 const lifetime=8*60*60;
 const empty={format:arrowTools.format,version:1,course:manifest.course,arrows:[]};
+function validateContent(input){
+ const data=arrowTools.validate(input,manifest),slides=slideTools.validate(input.slides,manifest.pages);
+ return slideTools.nonempty(slides)?{...data,slides}:data;
+}
 const headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'};
 const json=(body,status=200)=>Response.json(body,{status,headers});
 const err=(error,status)=>json({error},status);
@@ -36,7 +41,7 @@ const html=(body,status=200,policy="default-src 'none'; style-src 'unsafe-inline
 function loginPage(message='',status=200){
  return html(`<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
  <title>教師標註登入</title><style>body{font:16px system-ui;background:#edf4f1;color:#173731;margin:0;padding:10vh 20px}main{max-width:28rem;margin:auto;background:white;padding:24px;border:1px solid #b7cdc4;border-radius:8px}h1{margin:0 0 10px;font-size:26px}label{display:block;margin:18px 0 5px}input,button{font:inherit;padding:10px;border:1px solid #779d90;border-radius:5px}input{width:100%;box-sizing:border-box}button{color:white;background:#176657;border-color:#176657;margin:12px 0 8px}a{color:#176657}.error{color:#9b2434}</style>
- <main><h1>教師影片標註</h1><p>登入後可在影片上畫箭頭、儲存草稿。</p>${message?'<p role="alert" class="error">'+message+'</p>':''}
+ <main><h1>教師教材編輯</h1><p>登入後可編輯文字、移動內容、標註影片，並儲存草稿。</p>${message?'<p role="alert" class="error">'+message+'</p>':''}
  <form method="post" action="/teacher/login"><label for="password">教師或管理者密碼</label><input id="password" name="password" type="password" required maxlength="128" autocomplete="current-password"><button type="submit">登入</button></form><p><a href="/">返回學生版</a></p></main></html>`,status);
 }
 
@@ -51,7 +56,7 @@ export class ArrowWorkspace {
  snapshot(slot){
   const row=this.select('SELECT revision, payload, updated FROM snapshots WHERE slot = ?',slot);
   if(!row)return {revision:0,data:empty,updated:null};
-  const data=arrowTools.validate(JSON.parse(row.payload),manifest);
+  const data=validateContent(JSON.parse(row.payload));
   return {revision:row.revision,data,updated:row.updated};
  }
  put(slot,record){
@@ -111,7 +116,7 @@ export class ArrowWorkspace {
    try{
     input=JSON.parse(await read(request,680000));
     if(!Number.isSafeInteger(input.revision))throw Error('No revision');
-    if(op==='/draft')data=arrowTools.validate(input.data,manifest);
+    if(op==='/draft')data=validateContent(input.data);
    }catch{return err('標註或版本資料不正確。',400);}
    return this.ctx.storage.transactionSync(()=>{
     if(!authorized())return err('請重新登入教師版。',401);
@@ -164,10 +169,10 @@ export async function teacherArrows(request,env){
   const nonce=hex(crypto.getRandomValues(new Uint8Array(16)));
   const source=(await base.text()).replaceAll('<script>','<script nonce="'+nonce+'">');
   const boot='<base href="/"><script nonce="'+nonce+'">window.TeacherArrowManifest='+serialize(manifest)+
-   ';window.TeacherArrowInitial='+serialize(await draft.json())+';</script><script src="/teacher/editor.js"></script><script src="/teacher/online.js"></script>';
+   ';window.TeacherArrowInitial='+serialize(await draft.json())+';</script><script src="/teacher/content.js"></script><script src="/teacher/editor.js"></script><script src="/teacher/online.js"></script>';
   return html(source.replace('</head>',boot+'</head>'),200,"default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; img-src 'self' data: blob:; connect-src 'self'");
  }
- if(['/teacher/editor.js','/teacher/online.js'].includes(path)&&method==='GET'){
+ if(['/teacher/content.js','/teacher/editor.js','/teacher/online.js'].includes(path)&&method==='GET'){
   if(!validSession||!(await internal('/session')).ok)return err('請登入教師版。',401);
   const file=await env.ASSETS.fetch(new Request(url.origin+path));
   return new Response(file.body,{status:file.status,headers:{...headers,'Content-Type':'text/javascript; charset=utf-8'}});

@@ -99,7 +99,7 @@
   return {mount,paint,refresh,context,identity,replace,get arrows(){return arrows;},
    draft(viewer,value){layers.get(viewer).draft=value;paint(viewer);}};
  }
- const api={format,pageKey,validate,contentBox,surface,frameAt,player};
+ const api={format,pageKey,validate,contentBox,surface,frameAt,draw,player};
  if(typeof module==='object')module.exports=api;
  else window.TeachingArrows=api;
 })();

@@ -43,7 +43,7 @@
    });
   }
   button('登出',async()=>{
-   if(editor.dirty()&&!window.confirm('有未儲存的箭頭。確定登出？'))return;
+   if(editor.dirty()&&!window.confirm('有未儲存的修改。確定登出？'))return;
    await post('logout');editor.markSaved(editor.pack());location.replace('/teacher/');
   });
   function refresh(){for(const b of buttons)b.disabled=busy;if(rollback)rollback.disabled=busy||!state.canRollback;}
