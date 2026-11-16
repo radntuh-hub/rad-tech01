@@ -79,7 +79,7 @@
     if(active===viewer){cancel();return;}
     if(!player.context(viewer)||video.seeking||video.readyState<2){message('影片還沒定位完成，請稍等再畫。',true);return;}
     cancel();video.pause();active=viewer;
-    surface(hit,stage,player.context(viewer));hit.hidden=false;draw.textContent='取消畫箭頭';
+    surface(hit,stage,player.visibleContext(viewer));hit.hidden=false;draw.textContent='取消畫箭頭';
     message('從箭尾拖曳到要指出的位置。預設只在目前影格顯示。');
    });
    viewer.querySelector('.video-tools').append(draw);
@@ -131,7 +131,8 @@
    video.addEventListener('emptied',()=>{if(active===viewer)cancel();refresh(viewer);});
    video.addEventListener('loadeddata',()=>refresh(viewer));
    video.addEventListener('seeking',()=>{if(active===viewer)cancel();});
-   new ResizeObserver(()=>{if(active===viewer){if(drag)cancel();else{const c=player.context(viewer);if(c)surface(hit,stage,c);}}}).observe(video);
+   viewer.addEventListener('media:zoom',()=>{if(active===viewer)cancel();});
+   new ResizeObserver(()=>{if(active===viewer){if(drag)cancel();else{const c=player.visibleContext(viewer);if(c)surface(hit,stage,c);}}}).observe(video);
    refresh(viewer);
   }
   document.addEventListener('deck:slide',()=>{cancel();refresh();});

@@ -1,0 +1,23 @@
+.inspection-dialog { width: min(95vw, 1120px); max-height: 95dvh; padding: 16px; }
+.inspection-dialog .dialog-top { flex-wrap: wrap; }
+.inspection-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.inspection-tools input { width: 140px; max-width: 32vw; }
+.inspection-tools output { min-width: 4em; font-variant-numeric: tabular-nums; }
+.inspection-viewport, .inspection-video .video-stage { position: relative; overflow: hidden; width: 100%; height: min(60dvh, 640px); flex: none; background: #000; }
+.inspection-viewport #zoom-image, .inspection-video .video-stage video { width: 100% !important; height: 100% !important; max-height: none !important; max-width: none !important; margin: 0; object-fit: contain; transform-origin: center; }
+.inspection-pannable { cursor: grab; touch-action: none; }
+.inspection-pannable:active { cursor: grabbing; }
+.inspection-viewport img { user-select: none; -webkit-user-drag: none; }
+.inspection-video .viewer { width: 100%; outline: none; }
+.inspection-video .teacher-arrow-hit { cursor: crosshair; }
+.inspection-video .inspection-open-button, .inspection-video .deck-video-size { display: none; }
+.inspection-video .deck-crop-window { width: 100% !important; height: 100% !important; overflow: visible; position: static; margin: 0; }
+.inspection-video .deck-cropped-media { position: static; left: auto; top: auto; }
+.inspection-cropping { cursor: crosshair; touch-action: none; }
+.inspection-crop-selection { position: absolute; border: 2px solid #8bd8c0; background: #8bd8c022; pointer-events: none; z-index: 5; }
+@media (max-width: 540px) {
+ .inspection-dialog { padding: 10px; }
+ .inspection-tools { gap: 5px; }
+ .inspection-tools button { padding: 8px; }
+ .inspection-viewport, .inspection-video .video-stage { height: 48dvh; }
+}

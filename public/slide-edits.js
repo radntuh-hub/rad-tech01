@@ -4,6 +4,11 @@
  const record=o=>o&&typeof o==='object'&&!Array.isArray(o);
  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
  const within=(x,a,b)=>Number.isFinite(x)&&x>=a&&x<=b;
+ function cleanCrop(c){
+  if(!record(c)||!within(c.x,0,1)||!within(c.y,0,1)||!within(c.width,.01,1)||!within(c.height,.01,1)||
+   c.x+c.width>1.000001||c.y+c.height>1.000001)throw Error('裁切範圍必須在原始影像內。');
+  return {x:c.x,y:c.y,width:c.width,height:c.height};
+ }
  function validate(value,pages){
   const out=blank();if(value===undefined)return out;
   if(!record(value))throw Error('投影片編輯資料格式不正確。');
@@ -29,7 +34,20 @@
     if(group==='media'){
      if(!['image','video'].includes(match[2])||!record(item)||!Number.isInteger(item.scale)||!within(item.scale,25,200)||
       (match[2]==='video'&&!pages[match[1]]?.[Number(match[3])]))throw Error('圖片或影片的縮放比例需在 25% 到 200% 之間。');
-     if(item.scale!==100)out.media[id]={scale:item.scale};
+     let crop,crops;
+     if(item.crop!==undefined){
+      if(match[2]!=='image')throw Error('影片裁切必須指定序列。');
+      crop=cleanCrop(item.crop);
+     }
+     if(item.crops!==undefined){
+      if(match[2]!=='video'||!record(item.crops))throw Error('影片裁切序列不正確。');
+      crops={};for(const [key,c] of Object.entries(item.crops).sort(([a],[b])=>a.localeCompare(b))){
+       if(!pages[match[1]][Number(match[3])].includes(key))throw Error('影片裁切序列不正確。');
+       crops[key]=cleanCrop(c);
+      }
+      if(!Object.keys(crops).length)crops=undefined;
+     }
+     if(item.scale!==100||crop||crops)out.media[id]={scale:item.scale,...(crop?{crop}:{}),...(crops?{crops}:{})};
     }else if(group==='boxes'){
      if(match[4]!=='box'||!record(item)||typeof item.text!=='string'||item.text.length>4000||
       !within(item.x,0,1)||!within(item.y,0,1)||!within(item.width,.15,1)||item.x+item.width>1.001)
@@ -94,17 +112,31 @@
    if(!['image','video'].includes(item.kind))return;
    const element=item.node.querySelector(item.kind==='image'?'img[data-image]':'video');
    if(!element)return;
+   if(element.closest('.inspection-video'))return;
+   const oldWindow=element.closest('.deck-crop-window');
+   if(oldWindow)oldWindow.replaceWith(element);
+   element.classList.remove('deck-cropped-media');
+   for(const name of ['--deck-crop-left','--deck-crop-top'])element.style.removeProperty(name);
    element.classList.remove('deck-resized-media');element.style.removeProperty('--deck-media-width');
-   const scale=state.media?.[item.id]?.scale;
-   if(!scale||item.article.hidden)return;
+   const setting=state.media?.[item.id];
+   if(!setting||item.article.hidden)return;
+   const {scale}=setting,crop=cropFor(item.node);
    const width=item.kind==='image'?element.naturalWidth:element.videoWidth;
    const height=item.kind==='image'?element.naturalHeight:element.videoHeight;
    if(!width||!height)return;
    const base=contentBox(element.getBoundingClientRect(),width,height);
    const available=(item.kind==='image'?item.node:item.node.querySelector('.video-stage')).clientWidth;
    if(!base||!available)return;
-   element.style.setProperty('--deck-media-width',scaledWidth(base.width,available,scale)+'px');
+   const rendered=scaledWidth(base.width,available,scale);
+   element.style.setProperty('--deck-media-width',rendered+'px');
    element.classList.add('deck-resized-media');
+   if(crop){
+    const frame=document.createElement('span');frame.className='deck-crop-window';
+    frame.style.width=rendered*crop.width+'px';frame.style.height=rendered*height/width*crop.height+'px';
+    element.before(frame);frame.append(element);element.classList.add('deck-cropped-media');
+    element.style.setProperty('--deck-crop-left',-crop.x*rendered+'px');
+    element.style.setProperty('--deck-crop-top',-crop.y*rendered*height/width+'px');
+   }
   }
   for(const item of items.values()){
    if(!['image','video'].includes(item.kind))continue;
@@ -168,6 +200,10 @@
    return imageBox(picture(item));
   }
   const marks=id=>Object.values(state.imageArrows).filter(a=>a.image===id);
+  const cropFor=node=>{
+   const item=[...items.values()].find(item=>item.node===node),setting=state.media?.[item?.id];
+   return item?.kind==='video'?setting?.crops?.[node.querySelector('video').dataset.key]:setting?.crop;
+  };
   function paintMarks(svg,stage,box,arrows){
    svg.toggleAttribute('hidden',!box||!arrows.length);
    if(!box||!arrows.length)return;
@@ -192,16 +228,18 @@
     new ResizeObserver(()=>paintPicture(item)).observe(picture(item));
    }
    paintMarks(svg,node,!article.hidden&&pictureBox(item),arrows);
+   window.TeachingArrows.clip(svg,state.media?.[item.id]?.crop);
   }
   let zoomed=null,zoomRefresh;
   function zoom(button){
    const figure=button.closest('figure'),item=(onPage.get(figure?.closest('article'))||[]).find(item=>item.kind==='image'&&item.node===figure);
    zoomed=item?.id;
    if(!zoomRefresh&&marks(zoomed).length){
-    const image=document.querySelector('#zoom-image'),stage=document.createElement('div');
-    stage.className='deck-zoom-picture';image.before(stage);stage.append(image);
+    const image=document.querySelector('#zoom-image');
+    let stage=image.closest('.inspection-viewport');
+    if(!stage){stage=document.createElement('div');stage.className='deck-zoom-picture';image.before(stage);stage.append(image);}
     const svg=layer(stage);
-    zoomRefresh=()=>paintMarks(svg,stage,imageBox(image),marks(zoomed));
+    zoomRefresh=()=>{paintMarks(svg,stage,imageBox(image),marks(zoomed));window.TeachingArrows.clip(svg,state.media?.[zoomed]?.crop);};
     image.addEventListener('load',zoomRefresh);new ResizeObserver(zoomRefresh).observe(image);
    }
    zoomRefresh?.();
@@ -237,7 +275,7 @@
   }
   window.addEventListener('resize',refresh);
   document.addEventListener('deck:slide',refresh);
-  return {items,onPage,replace,place,pictureBox,paintPicture,zoom,get state(){return state;},get changes(){return nonempty(state)?state:undefined;}};
+  return {items,onPage,replace,place,pictureBox,paintPicture,zoom,cropFor,refreshZoom:()=>zoomRefresh?.(),get state(){return state;},get changes(){return nonempty(state)?state:undefined;}};
  }
  const api={blank,validate,nonempty,scaledWidth,mount};
  if(typeof module==='object')module.exports=api;

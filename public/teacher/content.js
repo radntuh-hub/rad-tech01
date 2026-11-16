@@ -13,8 +13,10 @@
   const textFields=panel.querySelector('[data-text]'),size=panel.querySelector('[type=number]'),color=textFields.querySelector('[type=color]'),bold=panel.querySelector('[type=checkbox]');
   const photo=panel.querySelector('[data-picture]'),draw=photo.querySelector('[data-draw]'),arrowMenu=photo.querySelector('[data-arrows]'),
    arrowColor=photo.querySelector('[type=color]'),removeArrow=photo.querySelector('[data-remove-arrow]');
+  const inspect=document.createElement('button');inspect.type='button';inspect.textContent='Zoom 檢視';
+  inspect.onclick=()=>selected?.node.querySelector('[data-zoom]')?.onclick();photo.prepend(inspect);
   const mediaFields=document.createElement('div');mediaFields.className='content-editor-controls';mediaFields.hidden=true;
-  mediaFields.innerHTML='<button type="button" data-smaller title="縮小影像" aria-label="縮小影像">-</button><label>影像尺寸 <input type="range" min="25" max="200" step="1" aria-label="影像尺寸"></label><button type="button" data-larger title="放大影像" aria-label="放大影像">+</button><label><input type="number" min="25" max="200" step="1" aria-label="縮放百分比"> %</label><button type="button" data-scale-reset>還原尺寸</button>';
+  mediaFields.innerHTML='<button type="button" data-smaller title="縮小版面尺寸" aria-label="縮小版面尺寸">-</button><label>版面尺寸 <input type="range" min="25" max="200" step="1" aria-label="版面尺寸"></label><button type="button" data-larger title="放大版面尺寸" aria-label="放大版面尺寸">+</button><label><input type="number" min="25" max="200" step="1" aria-label="縮放百分比"> %</label><button type="button" data-scale-reset>還原尺寸</button>';
   panel.append(mediaFields);
   const scale=mediaFields.querySelector('[type=range]'),percent=mediaFields.querySelector('[type=number]');
   const toggle=document.createElement('button');toggle.type='button';toggle.textContent='編輯內容';toggle.dataset.teacherAction='';
@@ -115,7 +117,8 @@
    if(!selected||mediaFields.hidden||!Number.isInteger(value)||value<25||value>200)return;
    if((deck.state.media?.[selected.id]?.scale??100)===value){scale.value=percent.value=value;return;}
    update(next=>{
-    next.media??={};if(value===100)delete next.media[selected.id];else next.media[selected.id]={scale:value};
+    next.media??={};const setting={...next.media[selected.id],scale:value};
+    if(value===100&&!setting.crop&&!setting.crops)delete next.media[selected.id];else next.media[selected.id]=setting;
    },{group,redraw:false});
    scale.value=percent.value=value;
   }
@@ -127,9 +130,22 @@
   mediaFields.querySelector('[data-smaller]').onclick=()=>setScale(Math.max(25,Number(scale.value)-10));
   mediaFields.querySelector('[data-larger]').onclick=()=>setScale(Math.min(200,Number(scale.value)+10));
   mediaFields.querySelector('[data-scale-reset]').onclick=()=>setScale(100);
+  deck.editCrop=(node,crop)=>{
+   const item=[...deck.items.values()].find(item=>item.node===node);if(!item)return;
+   update(next=>{
+    next.media??={};const setting={scale:100,...next.media[item.id]};
+    if(item.kind==='video'){
+     const key=node.querySelector('video').dataset.key;setting.crops={...setting.crops};
+     if(crop)setting.crops[key]=crop;else delete setting.crops[key];
+     if(!Object.keys(setting.crops).length)delete setting.crops;
+    }else if(crop)setting.crop=crop;else delete setting.crop;
+    if(setting.scale===100&&!setting.crop&&!setting.crops)delete next.media[item.id];else next.media[item.id]=setting;
+   });
+   message('裁切已套用至草稿。請關閉檢視器後儲存草稿，學生版尚未更新。');
+  };
   for(const item of deck.items.values()){
    if(item.kind!=='video')continue;
-   const button=document.createElement('button');button.type='button';button.textContent='調整影片大小';
+   const button=document.createElement('button');button.type='button';button.textContent='調整版面尺寸';
    button.className='deck-video-size';button.onclick=()=>choose(item);
    item.node.querySelector('.video-tools').append(button);
   }
@@ -235,7 +251,8 @@
    if((!moving&&!drawing)||drag||e.button!==0||(!selected?.node.contains(e.target)&&!handles.contains(e.target)))return;
    const box=drawing?deck.pictureBox(selected):selected.article.getBoundingClientRect(),state=deck.state.layout[selected.id]||{x:0,y:0};
    if(!box?.width||!box.height)return;
-   if(drawing&&(e.clientX<box.left||e.clientX>box.left+box.width||e.clientY<box.top||e.clientY>box.top+box.height))return;
+   const visible=drawing?window.TeachingArrows.croppedBox(box,deck.cropFor(selected.node)):box;
+   if(drawing&&(e.clientX<visible.left||e.clientX>visible.left+visible.width||e.clientY<visible.top||e.clientY>visible.top+visible.height))return;
    suppressClick=false;drag={pointer:e.pointerId,x:e.clientX,y:e.clientY,box,state};
    e.preventDefault();main.setPointerCapture(e.pointerId);
   });

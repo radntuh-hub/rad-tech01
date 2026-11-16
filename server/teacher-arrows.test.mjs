@@ -142,6 +142,32 @@ test('Media sizing scales the original width and never exceeds its column',()=>{
  assert.equal(slideTools.scaledWidth(280,280,200),280);
 });
 
+test('Nondestructive image and per-sequence video crops are validated, saved and published',async()=>{
+ const {request,login}=fixture(),teacher=await login(teacherPass),admin=await login(adminPass);
+ const crop={x:.1,y:.2,width:.7,height:.6};
+ const slides={text:{},layout:{},styles:{},imageArrows:{},media:{
+  'sinus/1:image:0':{scale:100,crop},'sinus/3:video:0':{scale:75,crops:{'sinus-1':crop}}
+ }};
+ const data={...pack([example]),slides};
+ for(const media of [
+  {'sinus/1:image:0':{scale:100,crop:{...crop,x:-.1}}},
+  {'sinus/1:image:0':{scale:100,crop:{...crop,width:0}}},
+  {'sinus/1:image:0':{scale:100,crop:{...crop,width:1}}},
+  {'sinus/1:image:0':{scale:100,crops:{'sinus-1':crop}}},
+  {'sinus/3:video:0':{scale:100,crop}},
+  {'sinus/3:video:0':{scale:100,crops:{'edh-1':crop}}}
+ ])assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data:{...data,slides:{...slides,media}}}})).status,400);
+ assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data}})).status,200);
+ const loaded=(await (await request('/api/arrows/draft',{cookie:admin})).json()).draft.data;
+ assert.deepEqual(loaded,data);
+ assert.equal(loaded.slides.media['sinus/3:video:0'].crops['sinus-2'],undefined);
+ assert.equal((await (await request('/api/arrows/published')).json()).slides,undefined);
+ assert.equal((await request('/api/arrows/publish',{cookie:admin,body:{revision:1,liveRevision:0}})).status,200);
+ assert.deepEqual((await (await request('/api/arrows/published')).json()).slides,slides);
+ assert.equal((await request('/api/arrows/rollback',{cookie:admin,body:{revision:1,liveRevision:1}})).status,200);
+ assert.equal((await (await request('/api/arrows/published')).json()).slides,undefined);
+});
+
 test('New text boxes persist, publish and rollback with safe text and normalized positions',async()=>{
  const {request,login}=fixture(),teacher=await login(teacherPass),admin=await login(adminPass);
  const id='sinus/1:box:qa-new-box';

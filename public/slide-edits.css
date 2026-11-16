@@ -3,6 +3,8 @@
 .deck-edited-weight { font-weight: var(--deck-edit-weight) !important; }
 .deck-edited-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
 .deck-resized-media { width: var(--deck-media-width) !important; height: auto !important; max-width: 100% !important; max-height: none !important; object-fit: contain; }
+.deck-crop-window { display: block; position: relative; overflow: hidden; flex: none; margin: auto; }
+.deck-cropped-media { position: absolute; left: var(--deck-crop-left); top: var(--deck-crop-top); max-width: none !important; margin: 0 !important; }
 .deck-video-size { display: none; }
 .deck-editing .deck-video-size { display: inline-block; }
 .content-editor input[type=range] { width: 180px; max-width: 40vw; }

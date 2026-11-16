@@ -34,8 +34,15 @@
   Object.assign(node.style,{left:(box.left-r.left)+'px',top:(box.top-r.top)+'px',
    width:box.width+'px',height:box.height+'px'});
  }
+ function croppedBox(box,crop){
+  if(!box||!crop)return box;
+  return {...box,left:box.left+crop.x*box.width,top:box.top+crop.y*box.height,width:box.width*crop.width,height:box.height*crop.height};
+ }
  const frameAt=(time,video)=>Math.max(1,Math.min(Math.round(video.duration*video.fps),Math.floor(time*video.fps+.0001)+1));
  const ns='http://www.w3.org/2000/svg';
+ function clip(svg,crop){
+  svg.style.clipPath=crop?`inset(${crop.y*100}% ${(1-crop.x-crop.width)*100}% ${(1-crop.y-crop.height)*100}% ${crop.x*100}%)`:'';
+ }
  function draw(svg,a,w,h){
   const x=a.x1*w,y=a.y1*h,tx=a.x2*w,ty=a.y2*h,dx=tx-x,dy=ty-y,len=Math.hypot(dx,dy);
   if(len<1)return;
@@ -47,12 +54,15 @@
   path.setAttribute('stroke',a.color);path.setAttribute('stroke-width','4');svg.append(path);
  }
  function player(media,manifest){
-  const layers=new WeakMap(),grouped=new Map();
+  const layers=new WeakMap(),grouped=new Map(),identities=new WeakMap();
   let arrows=[];
   const keyFor=(page,view,key)=>[page,view,key].join(':');
   function identity(viewer){
-   const article=viewer.closest('article');
-   return {page:pageKey(article),view:[...article.querySelectorAll('.viewer')].indexOf(viewer),key:viewer.querySelector('video').dataset.key};
+   if(!identities.has(viewer)){
+    const article=viewer.closest('article');
+    identities.set(viewer,{page:pageKey(article),view:[...article.querySelectorAll('.viewer')].indexOf(viewer)});
+   }
+   return {...identities.get(viewer),key:viewer.querySelector('video').dataset.key};
   }
   function context(viewer){
    const v=viewer.querySelector('video'),key=v.dataset.key,m=media[key];
@@ -61,6 +71,7 @@
    return box&&{...identity(viewer),...box,frame:frameAt(v.currentTime,m),max:manifest?.frames[key]};
   }
   function mount(viewer){
+   identity(viewer);
    const stage=viewer.querySelector('.video-stage'),video=viewer.querySelector('video');
    const svg=document.createElementNS(ns,'svg');svg.classList.add('teaching-arrow-layer');svg.setAttribute('aria-hidden','true');svg.setAttribute('hidden','');stage.append(svg);
    const toggle=document.createElement('button');toggle.type='button';toggle.textContent='隱藏箭頭';toggle.hidden=true;
@@ -82,6 +93,7 @@
    layer.svg.toggleAttribute('hidden',!shown.length);
    if(!shown.length)return;
    surface(layer.svg,layer.stage,box);
+   clip(layer.svg,apiView?.cropFor?.(viewer));
    const stamp=JSON.stringify([box.width,box.height,shown]);if(stamp===layer.stamp)return;
    layer.stamp=stamp;layer.svg.replaceChildren();
    for(const arrow of shown)draw(layer.svg,arrow,box.width,box.height);
@@ -96,10 +108,11 @@
    }
    refresh();
   }
-  return {mount,paint,refresh,context,identity,replace,get arrows(){return arrows;},
+  let apiView=null;
+  return {mount,paint,refresh,context,visibleContext:viewer=>croppedBox(context(viewer),apiView?.cropFor(viewer)),identity,replace,setSlides(value){apiView=value;},get arrows(){return arrows;},
    draft(viewer,value){layers.get(viewer).draft=value;paint(viewer);}};
  }
- const api={format,pageKey,validate,contentBox,surface,frameAt,draw,player};
+ const api={format,pageKey,validate,contentBox,surface,croppedBox,frameAt,draw,clip,player};
  if(typeof module==='object')module.exports=api;
  else window.TeachingArrows=api;
 })();

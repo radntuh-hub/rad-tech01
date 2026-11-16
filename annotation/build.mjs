@@ -71,6 +71,8 @@ export async function build(mode,output,inputs=[]){
  replace('src="/arrows.js"','src="arrows.js"');
  replace('href="/slide-edits.css"','href="slide-edits.css"');
  replace('src="/slide-edits.js"','src="slide-edits.js"');
+ replace('href="/media-inspect.css"','href="media-inspect.css"');
+ replace('src="/media-inspect.js"','src="media-inspect.js"');
  replace('</head>',(teacher?'<script>window.TeacherArrowManifest='+serialize(manifest)+';</script><script src="teacher.js"></script>':'')+'</head>');
  const webSource=html.match(/if\(!teacherArrows&&location\.protocol!=='file:'\)fetch\('\/api\/arrows\/published'\)[\s\S]*?\.catch\(\(\)=>\{\}\);/)?.[0];
  if(!webSource)throw Error('Missing published annotation loader.');
@@ -86,7 +88,7 @@ export async function build(mode,output,inputs=[]){
   await fs.copyFile(path.join(publicDir,file),path.join(dest,file));
  }
  await fs.writeFile(path.join(dest,teacher?'開啟教師標註.html':'index.html'),html);
- for(const file of ['arrows.js','arrows.css','slide-edits.js','slide-edits.css'])await fs.copyFile(path.join(publicDir,file),path.join(dest,file));
+ for(const file of ['arrows.js','arrows.css','slide-edits.js','slide-edits.css','media-inspect.js','media-inspect.css'])await fs.copyFile(path.join(publicDir,file),path.join(dest,file));
  if(teacher){
   await fs.copyFile(path.join(publicDir,'teacher/editor.js'),path.join(dest,'teacher.js'));
   await fs.copyFile(path.join(here,'操作說明.txt'),path.join(dest,'操作說明.txt'));
