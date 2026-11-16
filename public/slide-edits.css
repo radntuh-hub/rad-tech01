@@ -2,6 +2,10 @@
 .deck-edited-color { color: var(--deck-edit-color) !important; }
 .deck-edited-weight { font-weight: var(--deck-edit-weight) !important; }
 .deck-edited-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
+.deck-resized-media { width: var(--deck-media-width) !important; height: auto !important; max-width: 100% !important; max-height: none !important; object-fit: contain; }
+.deck-video-size { display: none; }
+.deck-editing .deck-video-size { display: inline-block; }
+.content-editor input[type=range] { width: 180px; max-width: 40vw; }
 .deck-edited-position { translate: var(--deck-edit-x, 0px) var(--deck-edit-y, 0px); }
 .deck-edited-fit { width: fit-content; max-width: 100%; }
 .deck-teacher-selected { outline: 2px solid #198374; outline-offset: 2px; }

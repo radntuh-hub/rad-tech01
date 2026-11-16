@@ -6,6 +6,7 @@ import {readFile} from 'node:fs/promises';
 import {createWorker,ArrowWorkspace} from './worker.mjs';
 import manifest from './arrow-manifest.json' with {type:'json'};
 import {readCourse} from '../annotation/build.mjs';
+import slideTools from '../public/slide-edits.js';
 
 const origin='https://course.test';
 const teacherPass='test-only-teacher',adminPass='test-only-admin';
@@ -108,6 +109,37 @@ test('Repeated bad passwords are throttled for the sign-in source',async()=>{
  const {loginRequest}=fixture();
  for(let i=0;i<8;i++)assert.equal((await loginRequest('wrong')).status,401);
  assert.equal((await loginRequest('wrong')).status,429);
+});
+
+test('Image and video sizes survive draft, publication, reset and rollback',async()=>{
+ const {request,login}=fixture(),teacher=await login(teacherPass),admin=await login(adminPass);
+ const slides={text:{},layout:{},styles:{},imageArrows:{},media:{'sinus/1:image:0':{scale:50},'sinus/3:video:0':{scale:150}}};
+ for(const media of [
+  {'sinus/1:image:0':{scale:24}}, {'sinus/1:image:0':{scale:201}},
+  {'sinus/3:video:0':{scale:50.5}}, {'sinus/3:video:0':{scale:'50'}},
+  {'sinus/1:text:0':{scale:50}}, {'sinus/1:video:0':{scale:50}},
+  {'sinus/3:video:99':{scale:50}}, {'fake/1:image:0':{scale:50}}
+ ]){
+  assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data:{...pack([]),slides:{...slides,media}}}})).status,400);
+ }
+ const data={...pack([]),slides};
+ assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data}})).status,200);
+ assert.deepEqual((await (await request('/api/arrows/draft',{cookie:admin})).json()).draft.data.slides,slides);
+ assert.equal((await request('/api/arrows/publish',{cookie:admin,body:{revision:1,liveRevision:0}})).status,200);
+ assert.deepEqual((await (await request('/api/arrows/published')).json()).slides,slides);
+ const reset={...data,slides:{...slides,media:{'sinus/1:image:0':{scale:100},'sinus/3:video:0':{scale:100}}}};
+ assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:1,data:reset}})).status,200);
+ assert.equal((await request('/api/arrows/publish',{cookie:admin,body:{revision:2,liveRevision:1}})).status,200);
+ assert.equal((await (await request('/api/arrows/published')).json()).slides,undefined);
+ assert.equal((await request('/api/arrows/rollback',{cookie:admin,body:{revision:2,liveRevision:2}})).status,200);
+ assert.deepEqual((await (await request('/api/arrows/published')).json()).slides,slides);
+});
+
+test('Media sizing scales the original width and never exceeds its column',()=>{
+ assert.equal(slideTools.scaledWidth(440,600,50),220);
+ assert.equal(slideTools.scaledWidth(440,600,125),550);
+ assert.equal(slideTools.scaledWidth(440,600,200),600);
+ assert.equal(slideTools.scaledWidth(280,280,200),280);
 });
 
 test('New text boxes persist, publish and rollback with safe text and normalized positions',async()=>{

@@ -13,6 +13,10 @@
   const textFields=panel.querySelector('[data-text]'),size=panel.querySelector('[type=number]'),color=textFields.querySelector('[type=color]'),bold=panel.querySelector('[type=checkbox]');
   const photo=panel.querySelector('[data-picture]'),draw=photo.querySelector('[data-draw]'),arrowMenu=photo.querySelector('[data-arrows]'),
    arrowColor=photo.querySelector('[type=color]'),removeArrow=photo.querySelector('[data-remove-arrow]');
+  const mediaFields=document.createElement('div');mediaFields.className='content-editor-controls';mediaFields.hidden=true;
+  mediaFields.innerHTML='<button type="button" data-smaller title="縮小影像" aria-label="縮小影像">-</button><label>影像尺寸 <input type="range" min="25" max="200" step="1" aria-label="影像尺寸"></label><button type="button" data-larger title="放大影像" aria-label="放大影像">+</button><label><input type="number" min="25" max="200" step="1" aria-label="縮放百分比"> %</label><button type="button" data-scale-reset>還原尺寸</button>';
+  panel.append(mediaFields);
+  const scale=mediaFields.querySelector('[type=range]'),percent=mediaFields.querySelector('[type=number]');
   const toggle=document.createElement('button');toggle.type='button';toggle.textContent='編輯內容';toggle.dataset.teacherAction='';
   toggle.setAttribute('aria-expanded','false');
   document.querySelector('.header-actions').prepend(toggle);
@@ -56,6 +60,8 @@
    move.disabled=!selected?.movable||window.matchMedia('(max-width: 540px)').matches;reset.disabled=!selected;
    textFields.hidden=selected?.kind!=='text';
    photo.hidden=selected?.kind!=='image';
+   mediaFields.hidden=!['image','video'].includes(selected?.kind);
+   if(!mediaFields.hidden)scale.value=percent.value=deck.state.media?.[selected.id]?.scale??100;
    if(!photo.hidden){
     const before=arrowMenu.value,arrows=Object.entries(deck.state.imageArrows).filter(([,a])=>a.image===selected.id);
     arrowMenu.replaceChildren(new Option('選取箭頭',''),...arrows.map(([id],i)=>new Option('箭頭 '+(i+1),id)));
@@ -74,8 +80,9 @@
   function refresh(){
    if(panel.hidden)return;
    const items=deck.onPage.get(active())||[];
-   select.replaceChildren(new Option('請選擇文字或圖片',''),...items.map(item=>new Option(
+   select.replaceChildren(new Option('請選擇文字、圖片或影片',''),...items.map(item=>new Option(
     item.kind==='image'?'圖片：'+(item.node.querySelector('img')?.alt||item.id.split(':').at(-1)):
+    item.kind==='video'?'影片：'+(item.node.querySelector('video')?.getAttribute('aria-label')||item.node.dataset.series):
      item.node.textContent.trim().slice(0,52),item.id
    )));
    choose(items.includes(selected)?selected:null);
@@ -104,6 +111,28 @@
    if(panel.hidden)choose(null);else refresh();
   };
   select.onchange=()=>choose(deck.items.get(select.value));
+  function setScale(value,group=false){
+   if(!selected||mediaFields.hidden||!Number.isInteger(value)||value<25||value>200)return;
+   if((deck.state.media?.[selected.id]?.scale??100)===value){scale.value=percent.value=value;return;}
+   update(next=>{
+    next.media??={};if(value===100)delete next.media[selected.id];else next.media[selected.id]={scale:value};
+   },{group,redraw:false});
+   scale.value=percent.value=value;
+  }
+  scale.onpointerdown=()=>{typing=false;};
+  scale.oninput=()=>setScale(Number(scale.value),true);
+  scale.onchange=()=>{typing=false;};
+  percent.oninput=()=>{if(percent.value&&percent.validity.valid)setScale(percent.valueAsNumber,true);};
+  percent.onblur=()=>{typing=false;percent.value=deck.state.media?.[selected?.id]?.scale??100;};
+  mediaFields.querySelector('[data-smaller]').onclick=()=>setScale(Math.max(25,Number(scale.value)-10));
+  mediaFields.querySelector('[data-larger]').onclick=()=>setScale(Math.min(200,Number(scale.value)+10));
+  mediaFields.querySelector('[data-scale-reset]').onclick=()=>setScale(100);
+  for(const item of deck.items.values()){
+   if(item.kind!=='video')continue;
+   const button=document.createElement('button');button.type='button';button.textContent='調整影片大小';
+   button.className='deck-video-size';button.onclick=()=>choose(item);
+   item.node.querySelector('.video-tools').append(button);
+  }
   add.onclick=()=>{
    const article=active();if(!article)return;
    const id=article.dataset.case+'/'+article.dataset.pageInCase+':box:'+crypto.randomUUID();
