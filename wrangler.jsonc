@@ -13,6 +13,7 @@
     "FRONTEND_ORIGIN": ""
   },
   "durable_objects": { "bindings": [{ "name": "ARROWS", "class_name": "ArrowWorkspace" }] },
+  "r2_buckets": [{ "binding": "MATERIALS", "bucket_name": "rad-tech01-teaching-media" }],
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["CourseQuota"] },
     { "tag": "v2-arrows", "new_sqlite_classes": ["ArrowWorkspace"] }

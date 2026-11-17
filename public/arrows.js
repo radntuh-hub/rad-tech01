@@ -1,10 +1,12 @@
 (() => {
  'use strict';
  const format='radiology-video-arrows';
+ const uploads=typeof module==='object'?require('./upload-model.js'):window.TeachingUploadModel;
  const pageKey=a=>a.dataset.case+'/'+a.dataset.pageInCase;
  const fail=message=>{throw Error(message);};
  const unit=n=>Number.isFinite(n)&&n>=0&&n<=1;
  function validate(data,manifest){
+  manifest=uploads.extend(manifest,uploads.placements(data?.slides?.uploads,manifest.pages));
   if(data?.format!==format||data.version!==1||data.course!==manifest.course)
    fail('這份標註不屬於目前的教材或影片版本。');
   if(!Array.isArray(data.arrows)||data.arrows.length>2000)fail('標註清單格式不正確。');
@@ -60,7 +62,7 @@
   function identity(viewer){
    if(!identities.has(viewer)){
     const article=viewer.closest('article');
-    identities.set(viewer,{page:pageKey(article),view:[...article.querySelectorAll('.viewer')].indexOf(viewer)});
+    identities.set(viewer,{page:pageKey(article),view:viewer.dataset?.deckView!==undefined?Number(viewer.dataset.deckView):[...article.querySelectorAll('.viewer')].indexOf(viewer)});
    }
    return {...identities.get(viewer),key:viewer.querySelector('video').dataset.key};
   }
@@ -68,7 +70,7 @@
    const v=viewer.querySelector('video'),key=v.dataset.key,m=media[key];
    if(!m||v.readyState<1||!v.videoWidth||!v.videoHeight)return null;
    const box=contentBox(v.getBoundingClientRect(),v.videoWidth,v.videoHeight);
-   return box&&{...identity(viewer),...box,frame:frameAt(v.currentTime,m),max:manifest?.frames[key]};
+   return box&&{...identity(viewer),...box,frame:frameAt(v.currentTime,m),max:Math.max(1,Math.round(m.duration*m.fps))};
   }
   function mount(viewer){
    identity(viewer);

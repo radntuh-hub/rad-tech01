@@ -1,12 +1,13 @@
 (() => {
  'use strict';
  function connect(editor){
-  let state=window.TeacherArrowInitial,busy=false;
+  let state=window.TeacherArrowInitial,busy=false,uploading=false;
+  document.addEventListener('teacher:upload',e=>{uploading=e.detail;refresh();});
   const buttons=[];
   const button=(text,task)=>{
    const b=document.createElement('button');b.type='button';b.textContent=text;
    b.onclick=async()=>{
-    if(busy)return;
+    if(busy||uploading)return;
     busy=true;refresh();
     try{await task();}catch(e){editor.message(e.message,true);}
     finally{busy=false;refresh();}
@@ -46,7 +47,7 @@
    if(editor.dirty()&&!window.confirm('有未儲存的修改。確定登出？'))return;
    await post('logout');editor.markSaved(editor.pack());location.replace('/teacher/');
   });
-  function refresh(){for(const b of buttons)b.disabled=busy;if(rollback)rollback.disabled=busy||!state.canRollback;}
+  function refresh(){for(const b of buttons)b.disabled=busy||uploading;if(rollback)rollback.disabled=busy||uploading||!state.canRollback;}
   editor.load(state.draft.data);editor.message((state.role==='admin'?'管理者':'教師')+' · '+counts());refresh();
   return buttons;
  }

@@ -58,7 +58,8 @@
    finishMove();typing=false;editable(selected,false);selected?.node.classList.remove('deck-teacher-selected');
    selected=item||null;selected?.node.classList.add('deck-teacher-selected');
    select.value=selected?.id||'';
-   editable(selected,!panel.hidden);remove.hidden=!selected?.added;
+   editable(selected,!panel.hidden);remove.hidden=!selected?.added;remove.textContent=selected?.uploaded?'刪除新增素材':'刪除文字方塊';
+   uploadUI?.select(selected);
    move.disabled=!selected?.movable||window.matchMedia('(max-width: 540px)').matches;reset.disabled=!selected;
    textFields.hidden=selected?.kind!=='text';
    photo.hidden=selected?.kind!=='image';
@@ -143,12 +144,16 @@
    });
    message('裁切已套用至草稿。請關閉檢視器後儲存草稿，學生版尚未更新。');
   };
-  for(const item of deck.items.values()){
-   if(item.kind!=='video')continue;
+  function mediaButton(item){
+   if(item.kind!=='video')return;
+   if(item.node.querySelector('.deck-video-size'))return;
    const button=document.createElement('button');button.type='button';button.textContent='調整版面尺寸';
    button.className='deck-video-size';button.onclick=()=>choose(item);
    item.node.querySelector('.video-tools').append(button);
   }
+  for(const item of deck.items.values())mediaButton(item);
+  document.addEventListener('deck:media-item',e=>{mediaButton(e.detail);refresh();});
+  const uploadUI=window.TeacherUploads?.mount({panel,deck,active,update,choose,message});
   add.onclick=()=>{
    const article=active();if(!article)return;
    const id=article.dataset.case+'/'+article.dataset.pageInCase+':box:'+crypto.randomUUID();
@@ -162,7 +167,10 @@
   remove.onclick=()=>{
    if(!selected?.added)return;
    const id=selected.id;choose(null);
-   update(next=>{for(const group of ['boxes','text','layout','styles'])delete next[group]?.[id];});
+   update(next=>{
+    for(const group of ['boxes','text','layout','styles','media','uploads'])delete next[group]?.[id];
+    for(const [key,a] of Object.entries(next.imageArrows))if(a.image===id)delete next.imageArrows[key];
+   });
   };
   text.onblur=()=>{typing=false;};
   function changeText(value){
@@ -196,7 +204,7 @@
   color.onchange=()=>setStyle('color',color.value);
   bold.onchange=()=>setStyle('bold',bold.checked);
   reset.onclick=()=>{if(selected)update(next=>{
-   for(const [key,group] of Object.entries(next))if(key!=='boxes')delete group[selected.id];
+   for(const [key,group] of Object.entries(next))if(key!=='boxes'&&!(key==='uploads'&&selected.uploaded))delete group[selected.id];
    for(const [id,a] of Object.entries(next.imageArrows))if(a.image===selected.id)delete next.imageArrows[id];
   });};
   panel.querySelector('[data-format-reset]').onclick=()=>{if(selected)update(next=>{delete next.styles[selected.id];});};

@@ -6,6 +6,12 @@
 .deck-crop-window { display: block; position: relative; overflow: hidden; flex: none; margin: auto; }
 .deck-cropped-media { position: absolute; left: var(--deck-crop-left); top: var(--deck-crop-top); max-width: none !important; margin: 0 !important; }
 .deck-video-size { display: none; }
+.deck-uploaded-media { width: min(100%, 640px); margin: 24px auto; }
+.content-editor progress { max-width: 160px; height: 12px; }
+.teacher-upload-dialog { width: min(560px, 94vw); }
+.teacher-upload-dialog label { display: block; margin: 16px 0; line-height: 1.6; }
+.teacher-upload-dialog input:not([type=checkbox]) { display: block; max-width: 100%; font: inherit; padding: 8px; }
+.teacher-upload-dialog p { font-size: 15px; }
 .deck-editing .deck-video-size { display: inline-block; }
 .content-editor input[type=range] { width: 180px; max-width: 40vw; }
 .deck-edited-position { translate: var(--deck-edit-x, 0px) var(--deck-edit-y, 0px); }

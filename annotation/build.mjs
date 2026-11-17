@@ -48,7 +48,7 @@ export function merge(packs,manifest){
    }
   }
  }
- const data=arrows.validate({format:arrows.format,version:1,course:manifest.course,arrows:[...items.values()]},manifest);
+ const data=arrows.validate({format:arrows.format,version:1,course:manifest.course,arrows:[...items.values()],slides},manifest);
  const checked=slideTools.validate(slides,manifest.pages);
  return slideTools.nonempty(checked)?{...data,slides:checked}:data;
 }
@@ -60,6 +60,7 @@ export async function build(mode,output,inputs=[]){
  const {manifest,files,html:source}=await readCourse();
  const packs=await Promise.all(inputs.map(async file=>JSON.parse(await fs.readFile(file,'utf8'))));
  const annotations=merge(packs,manifest);
+ if(Object.keys(annotations.slides?.uploads||{}).length)throw Error('草稿包含雲端上傳素材，請使用線上發布。JSON 不含素材檔案，不能直接產生離線版。');
  let html=source;
  const replace=(from,to)=>{
   if(html.split(from).length!==2)throw Error('Deck integration point changed: '+from);
@@ -69,6 +70,8 @@ export async function build(mode,output,inputs=[]){
  replace('<link rel="stylesheet" href="study-web.css">\n<script defer src="study-config.js"></script>\n<script defer src="study-web.js"></script>','');
  replace('href="/arrows.css"','href="arrows.css"');
  replace('src="/arrows.js"','src="arrows.js"');
+ replace('src="/upload-model.js"','src="upload-model.js"');
+ replace('src="/media-content.js"','src="media-content.js"');
  replace('href="/slide-edits.css"','href="slide-edits.css"');
  replace('src="/slide-edits.js"','src="slide-edits.js"');
  replace('href="/media-inspect.css"','href="media-inspect.css"');
@@ -88,7 +91,7 @@ export async function build(mode,output,inputs=[]){
   await fs.copyFile(path.join(publicDir,file),path.join(dest,file));
  }
  await fs.writeFile(path.join(dest,teacher?'開啟教師標註.html':'index.html'),html);
- for(const file of ['arrows.js','arrows.css','slide-edits.js','slide-edits.css','media-inspect.js','media-inspect.css'])await fs.copyFile(path.join(publicDir,file),path.join(dest,file));
+ for(const file of ['upload-model.js','media-content.js','arrows.js','arrows.css','slide-edits.js','slide-edits.css','media-inspect.js','media-inspect.css'])await fs.copyFile(path.join(publicDir,file),path.join(dest,file));
  if(teacher){
   await fs.copyFile(path.join(publicDir,'teacher/editor.js'),path.join(dest,'teacher.js'));
   await fs.copyFile(path.join(here,'操作說明.txt'),path.join(dest,'操作說明.txt'));

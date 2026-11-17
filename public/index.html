@@ -17,11 +17,13 @@ body{height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);grid-templat
 @media print{header,footer,.video-tools,.frame-seek,.series-options,.header-actions{display:none}article[hidden]{display:block!important}article{break-after:page}main{padding:0;height:auto;overflow:visible}body{display:block;height:auto;overflow:visible;background:#fff;color:#111}.columns{min-height:0!important}details>div{display:block}a{color:#13534c}}
 </style><style id="course-feedback-style">.course-feedback{margin-top:32px;padding:22px 0 8px;border-top:1px solid var(--line)}.course-feedback p{margin:0 0 14px}.course-feedback a{display:inline-block;max-width:100%;padding:10px 16px;border:1px solid var(--accent);border-radius:5px;font-weight:650}.course-feedback a:hover{background:var(--accent);color:#15191a}</style>
 <link rel="stylesheet" href="/arrows.css">
+<script src="/upload-model.js"></script>
 <script src="/arrows.js"></script>
 <link rel="stylesheet" href="/slide-edits.css">
 <script src="/slide-edits.js"></script>
 <link rel="stylesheet" href="/media-inspect.css">
 <script src="/media-inspect.js"></script>
+<script src="/media-content.js"></script>
 </head>
 <body>
 <header><div class="topbar"><div class="brand">Radiology <span>病例課後補充</span></div><div class="collection-control"><label for="collection">主題</label><select id="collection"><option value="neck">Neck imaging</option><option value="brain">Brain and spine injury</option></select></div><div class="header-actions"><button id="contents-open" aria-haspopup="dialog">目錄</button><button id="fullscreen" title="全螢幕" aria-label="全螢幕">⛶</button></div></div><nav class="case-tabs" data-group="neck" aria-label="選擇 Case"><button data-case="sinus" data-group="neck" aria-current="true" ><small>01</small>Odontogenic sinusitis</button><button data-case="npc" data-group="neck" aria-current="false" ><small>02</small>Nasopharyngeal carcinoma</button><button data-case="infection" data-group="neck" aria-current="false" ><small>03</small>Deep neck infection</button><button data-case="ranula" data-group="neck" aria-current="false" ><small>04</small>Diving ranula</button><button data-case="edh" data-group="brain" aria-current="false" hidden><small>05</small>EDH</button><button data-case="sdh" data-group="brain" aria-current="false" hidden><small>06</small>SDH</button><button data-case="contusion" data-group="brain" aria-current="false" hidden><small>07</small>Contusion / SAH</button><button data-case="dai" data-group="brain" aria-current="false" hidden><small>08</small>DAI</button><button data-case="cspine" data-group="brain" aria-current="false" hidden><small>09</small>Cervical spine injury</button></nav></header>
@@ -187,7 +189,7 @@ function frameAt(time,item){return Math.max(1,Math.min(frameCount(item),Math.flo
 function frameTime(frame,item){return (Math.max(1,Math.min(frameCount(item),Math.round(frame)))-1+0.25)/item.fps}
 const videoUrls=new Map();
 function playableUrl(key){
- const url=media[key].url;if(location.protocol==='file:'||url.startsWith('data:'))return Promise.resolve(url);
+ const url=media[key].url;if(location.protocol==='file:'||url.startsWith('data:')||url.startsWith('/api/arrows/media/'))return Promise.resolve(url);
  // Blob URLs allow precise seeking even when the host does not support HTTP ranges.
  if(!videoUrls.has(key))videoUrls.set(key,fetch(url).then(response=>{if(!response.ok)throw Error('Video download failed');return response.blob()}).then(blob=>URL.createObjectURL(blob)).catch(error=>{videoUrls.delete(key);throw error}));
  return videoUrls.get(key);
@@ -231,7 +233,12 @@ function initViewer(viewer){
  function step(delta){seekFrame(frameAt(v.currentTime,media[v.dataset.key])+delta)}
  const speed=document.createElement('select');speed.setAttribute('aria-label','播放速度');[.25,.5,1,1.5,2].forEach(n=>speed.add(new Option(`${n}×`,n,n===1,n===1)));speed.onchange=()=>v.playbackRate=Number(speed.value);const speedLabel=document.createElement('label');speedLabel.className='speed-control';speedLabel.append('速度',speed);tools.append(speedLabel);
  const loop=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.onchange=()=>v.loop=check.checked;loop.append(check,' Loop');tools.append(loop);
- if(keys.length>1)keys.forEach(key=>{const b=document.createElement('button');b.textContent=media[key].label;b.dataset.key=key;b.onclick=()=>setMedia(viewer,key);viewer.querySelector('.series-options').append(b)});
+ viewer.refreshSeries=()=>{
+  const options=viewer.querySelector('.series-options');options.replaceChildren();
+  const currentKeys=viewer.dataset.series.split(',');
+  if(currentKeys.length>1)currentKeys.forEach(key=>{const b=document.createElement('button');b.textContent=media[key].label;b.dataset.key=key;b.onclick=()=>setMedia(viewer,key);options.append(b)});
+ };
+ viewer.refreshSeries();
  v.addEventListener('loadedmetadata',()=>{seek.disabled=false;v.currentTime=media[v.dataset.key].start;v.playbackRate=Number(speed.value);syncFrame()});
  v.addEventListener('error',()=>{if(viewer.querySelector('.error'))return;const e=document.createElement('p');e.className='error';e.textContent='影片無法播放，請以 Chrome、Safari 或 Edge 開啟檔案。';viewer.append(e)});
  videoArrows.mount(viewer);teacherArrows?.mount(viewer);mediaInspect?.video(viewer);setMedia(viewer,viewer.dataset.initial);
@@ -259,7 +266,9 @@ document.querySelector('#collection').onchange=e=>go(chapters.find(c=>c.group===
 document.querySelectorAll('.case-tabs button').forEach(b=>b.onclick=()=>go(chapters.find(c=>c.id===b.dataset.case).start));
 document.querySelector('#previous').onclick=()=>go(current-1);document.querySelector('#next').onclick=()=>go(current+1);
 document.querySelectorAll('.quiz').forEach(q=>q.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{q.querySelectorAll('[data-choice]').forEach(x=>x.setAttribute('aria-pressed',x===b));const f=q.querySelector('.feedback');f.hidden=false;f.textContent=(b.dataset.choice===q.dataset.answer?'答對了。':'再想一下。')+q.querySelector('template').content.textContent}));
-document.querySelectorAll('[data-zoom]').forEach(b=>b.onclick=()=>{const im=document.querySelector('#zoom-image');im.src=imageUrl(b.dataset.zoom);im.alt=b.querySelector('img').alt;document.querySelector('#zoom-title').textContent=im.alt;document.querySelector('#zoom').showModal();slideEdits?.zoom(b);mediaInspect?.image(b)});
+function openImage(b){const im=document.querySelector('#zoom-image');im.src=imageUrl(b.dataset.zoom);im.alt=b.querySelector('img').alt;document.querySelector('#zoom-title').textContent=im.alt;document.querySelector('#zoom').showModal();slideEdits?.zoom(b);mediaInspect?.image(b)}
+document.querySelectorAll('[data-zoom]').forEach(b=>b.onclick=()=>openImage(b));
+window.TeachingMediaContent?.mount(slideEdits,{media,images,initViewer,setMedia,openImage});
 document.querySelector('#contents-open').onclick=()=>document.querySelector('#contents').showModal();
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close).close());
 document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{document.querySelector('#contents').close();go(b.dataset.page)});

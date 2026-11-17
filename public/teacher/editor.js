@@ -11,7 +11,7 @@
   const message=(text,error=false)=>{status.textContent=text;status.toggleAttribute('data-error',error);};
   message('教師標註版 · 到有影片的頁面，使用播放器下方的「畫箭頭」。');
   const content=online&&window.TeacherSlideEditor?.start(slideEdits,message);
-  const pack=()=>({format,version:1,course:manifest.course,arrows:player.arrows,
+  const pack=()=>({format,version:1,course:manifest.course,arrows:player.arrows.filter(a=>!a.key.startsWith('upload-')||Object.values(slideEdits?.state.uploads||{}).some(asset=>'upload-'+asset.id===a.key)),
    ...(slideEdits?.changes?{slides:slideEdits.changes}:{})});
   const serialized=()=>JSON.stringify(pack());
   let saved=serialized(),active=null,drag=null;
@@ -61,7 +61,7 @@
    const c=controls.get(viewer),a=player.arrows.find(a=>a.id===c.select.value);
    c.fields.hidden=!a;if(!a)return;
    c.first.value=a.first;c.last.value=a.last;c.color.value=a.color;
-   c.first.max=c.last.max=manifest.frames[a.key];
+   c.first.max=c.last.max=Math.max(1,Math.round(media[a.key].duration*media[a.key].fps));
   }
   function cancel(){
    if(!active)return;

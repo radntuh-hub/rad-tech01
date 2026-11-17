@@ -7,6 +7,8 @@ import {createWorker,ArrowWorkspace} from './worker.mjs';
 import manifest from './arrow-manifest.json' with {type:'json'};
 import {readCourse} from '../annotation/build.mjs';
 import slideTools from '../public/slide-edits.js';
+import uploadTools from '../public/upload-model.js';
+import {byteRange,signature} from './media-store.mjs';
 
 const origin='https://course.test';
 const teacherPass='test-only-teacher',adminPass='test-only-admin';
@@ -17,6 +19,13 @@ const source=await readFile(new URL('../public/index.html',import.meta.url),'utf
 
 function fixture(){
  const env={ARROW_TEACHER_SHA256:sha(teacherPass),ARROW_ADMIN_SHA256:sha(adminPass),ASSETS:{fetch:()=>new Response(source)}};
+ const files=new Map();
+ env.MATERIALS={
+  async put(id,bytes){files.set(id,bytes.slice());},async delete(id){files.delete(id);},
+  async head(id){return files.has(id)?{}:null;},
+  async get(id,opts){const bytes=files.get(id);if(!bytes)return null;const range=opts?.range;
+   return {body:range?bytes.slice(range.offset,range.offset+range.length):bytes};}
+ };
  const db=new DatabaseSync(':memory:');
  const ctx={storage:{
   sql:{exec(sql,...args){
@@ -37,7 +46,7 @@ function fixture(){
   const headers={'CF-Connecting-IP':'203.0.113.5',...(opts.headers||{})};
   if(opts.cookie)headers.Cookie=opts.cookie;
   if(opts.body){headers.Origin=opts.origin||origin;headers['Content-Type']=opts.type||'application/json';}
-  return worker.fetch(new Request(origin+path,{method:opts.body?'POST':'GET',headers,body:opts.type?opts.body:opts.body?JSON.stringify(opts.body):undefined}),env);
+  return worker.fetch(new Request(origin+path,{method:opts.method||(opts.body?'POST':'GET'),headers,body:opts.type?opts.body:opts.body?JSON.stringify(opts.body):undefined}),env);
  }
  const loginRequest=password=>request('/teacher/login',{body:new URLSearchParams({password}),type:'application/x-www-form-urlencoded'});
  async function login(password){
@@ -46,8 +55,78 @@ function fixture(){
   assert.match(cookie,/Secure; HttpOnly; SameSite=Lax/);
   return cookie.split(';')[0];
  }
- return {request,login,loginRequest};
+ return {request,login,loginRequest,files,env};
 }
+
+test('Uploaded files stay private until publication and survive rollback with byte-range playback',async()=>{
+ const {request,login,files}=fixture(),teacher=await login(teacherPass),admin=await login(adminPass);
+ const bytes=new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,0]);
+ const metadata={name:'測試圖片',mime:'image/png',size:bytes.length,width:640,height:480};
+ const opts={cookie:teacher,type:metadata.mime,body:bytes,headers:{'Content-Length':String(bytes.length),'X-Media-Metadata':encodeURIComponent(JSON.stringify(metadata))}};
+ assert.equal((await request('/api/arrows/media',{...opts,cookie:undefined})).status,401);
+ assert.equal((await request('/api/arrows/media',{...opts,origin:'https://evil.test'})).status,403);
+ assert.equal((await request('/api/arrows/media',{...opts,body:new Uint8Array(12)})).status,415);
+ assert.equal(files.size,0);
+ const uploaded=await request('/api/arrows/media',opts);assert.equal(uploaded.status,200);
+ const {asset}=await uploaded.json(),url=uploadTools.url(asset);
+ assert.equal((await request(url)).status,401);
+ assert.deepEqual(new Uint8Array(await (await request(url,{cookie:teacher})).arrayBuffer()),bytes);
+ const slides={...slideTools.blank(),uploads:{'sinus/1:image:100':asset}},data={...pack([]),slides};
+ const forged=structuredClone(data);forged.slides.uploads['sinus/1:image:100'].width=999;
+ assert.equal((await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data:forged}})).status,400);
+ const saved=await request('/api/arrows/draft',{cookie:teacher,body:{revision:0,data}});assert.equal(saved.status,200);
+ assert.equal((await request(url)).status,401);
+ assert.equal((await request('/api/arrows/publish',{cookie:teacher,body:{revision:1,liveRevision:0}})).status,403);
+ assert.equal((await request('/api/arrows/publish',{cookie:admin,body:{revision:1,liveRevision:0}})).status,200);
+ const range=await request(url,{headers:{Range:'bytes=2-5'}});assert.equal(range.status,206);
+ assert.equal(range.headers.get('Content-Range'),'bytes 2-5/12');assert.deepEqual(new Uint8Array(await range.arrayBuffer()),bytes.slice(2,6));
+ assert.equal((await request(url,{headers:{Range:'bytes=100-'}})).status,416);
+ assert.equal((await request(url,{method:'HEAD'})).headers.get('Content-Length'),'12');
+ assert.equal((await request('/api/arrows/rollback',{cookie:admin,body:{revision:1,liveRevision:1}})).status,200);
+ assert.equal((await request(url)).status,401);assert.equal((await request(url,{cookie:teacher})).status,200);
+});
+
+test('Upload size, metadata, format and sequence bounds are validated',()=>{
+ const asset={id:'11111111-1111-1111-1111-111111111111',name:'Video',mime:'video/mp4',size:200,width:512,height:512,duration:2,fps:10};
+ const slides={...slideTools.blank(),uploads:{'sinus/1:video:100':asset},media:{'sinus/1:video:100':{scale:80,crops:{['upload-'+asset.id]:{x:.1,y:.1,width:.7,height:.7}}}}};
+ assert.equal(slideTools.validate(slides,manifest.pages).uploads['sinus/1:video:100'].kind,'video');
+ for(const changes of [{size:26*1024*1024},{mime:'text/html'},{width:0},{fps:0},{duration:Infinity},{id:'../../secret'}])
+  assert.throws(()=>uploadTools.metadata({...asset,...changes}));
+ const custom=uploadTools.extend(manifest,slideTools.validate(slides,manifest.pages).uploads);
+ assert.equal(custom.frames['upload-'+asset.id],20);assert.equal(manifest.pages['sinus/1'][100],undefined);
+ assert.deepEqual(byteRange('bytes=-4',12),{offset:8,length:4});assert.equal(byteRange('bytes=-0',12),false);
+ assert.equal(byteRange('bytes=1-2,4-5',12),false);assert.equal(byteRange('bytes=6-3',12),false);
+ assert.equal(signature(new TextEncoder().encode('<html>bad</html>'),'image/png'),false);
+});
+
+test('Uploaded video arrows and crops persist without changing original sequences',async()=>{
+ const {request,login}=fixture(),cookie=await login(adminPass);
+ const bytes=new Uint8Array([0,0,0,12,102,116,121,112,105,115,111,109]);
+ const metadata={name:'Test video',mime:'video/mp4',size:12,width:640,height:360,duration:3,fps:10};
+ const response=await request('/api/arrows/media',{cookie,type:metadata.mime,body:bytes,headers:{'Content-Length':'12','X-Media-Metadata':encodeURIComponent(JSON.stringify(metadata))}});
+ assert.equal(response.status,200);const {asset}=await response.json(),key=uploadTools.key(asset),id='sinus/1:video:100';
+ const slides={...slideTools.blank(),uploads:{[id]:asset},media:{[id]:{scale:90,crops:{[key]:{x:.1,y:.2,width:.8,height:.6}}}}};
+ const arrow={...example,id:'upload-arrow',page:'sinus/1',view:100,key,first:12,last:16};
+ const data={...pack([arrow]),slides};
+ assert.equal((await request('/api/arrows/draft',{cookie,body:{revision:0,data:{...data,arrows:[{...arrow,last:31}]}}})).status,400);
+ assert.equal((await request('/api/arrows/draft',{cookie,body:{revision:0,data}})).status,200);
+ const reloaded=(await (await request('/api/arrows/draft',{cookie})).json()).draft.data;
+ assert.deepEqual(reloaded.arrows,[arrow]);assert.deepEqual(reloaded.slides.media,slides.media);
+ assert.equal((await request('/api/arrows/publish',{cookie,body:{revision:1,liveRevision:0}})).status,200);
+ const live=await (await request('/api/arrows/published')).json();assert.deepEqual(live.arrows,[arrow]);
+ assert.equal((await request(uploadTools.url(asset))).status,200);
+ assert.deepEqual(manifest.pages['sinus/3'][0],['sinus-1','sinus-2']);
+ assert.throws(()=>slideTools.validate({...slides,uploads:{}},manifest.pages));
+});
+
+test('Missing storage and invalid upload length fail without publishing content',async()=>{
+ const {request,login,env,files}=fixture(),cookie=await login(teacherPass);
+ const metadata={name:'Test',mime:'image/png',size:12,width:100,height:100};
+ const opts={cookie,type:metadata.mime,body:new Uint8Array(12),headers:{'Content-Length':'10','X-Media-Metadata':encodeURIComponent(JSON.stringify(metadata))}};
+ assert.equal((await request('/api/arrows/media',opts)).status,400);assert.equal(files.size,0);
+ delete env.MATERIALS;assert.equal((await request('/api/arrows/media',opts)).status,503);
+ assert.equal((await request('/teacher/uploads.js')).status,401);
+});
 
 test('Web annotation manifest matches the shipped media and page IDs',async()=>{
  assert.deepEqual(manifest,(await readCourse()).manifest);

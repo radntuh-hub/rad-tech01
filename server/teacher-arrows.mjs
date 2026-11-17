@@ -1,12 +1,14 @@
 import manifest from './arrow-manifest.json' with {type:'json'};
 import arrowTools from '../public/arrows.js';
 import slideTools from '../public/slide-edits.js';
+import uploadTools from '../public/upload-model.js';
+import {uploadMedia,serveMedia} from './media-store.mjs';
 
 const cookieName='__Host-rad-teacher';
 const lifetime=8*60*60;
 const empty={format:arrowTools.format,version:1,course:manifest.course,arrows:[]};
 function validateContent(input){
- const data=arrowTools.validate(input,manifest),slides=slideTools.validate(input.slides,manifest.pages);
+ const slides=slideTools.validate(input.slides,manifest.pages),data=arrowTools.validate({...input,slides},manifest);
  return slideTools.nonempty(slides)?{...data,slides}:data;
 }
 const headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'};
@@ -51,6 +53,7 @@ export class ArrowWorkspace {
   this.sql.exec('CREATE TABLE IF NOT EXISTS snapshots (slot TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload TEXT NOT NULL, updated TEXT)');
   this.sql.exec('CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, role TEXT NOT NULL, credential TEXT NOT NULL, expires INTEGER NOT NULL)');
   this.sql.exec('CREATE TABLE IF NOT EXISTS login_limits (bucket TEXT PRIMARY KEY, count INTEGER NOT NULL, until INTEGER NOT NULL)');
+  this.sql.exec('CREATE TABLE IF NOT EXISTS media_uploads (id TEXT PRIMARY KEY, metadata TEXT NOT NULL)');
  }
  select(query,...args){return this.sql.exec(query,...args).toArray()[0];}
  snapshot(slot){
@@ -94,6 +97,12 @@ export class ArrowWorkspace {
    try{const live=this.snapshot('live');return json({...live.data,revision:live.revision});}
    catch{return json({...empty,revision:0});}
   }
+  if(op.startsWith('/media-access/')&&method==='GET'){
+   const id=op.slice('/media-access/'.length),row=this.select('SELECT metadata FROM media_uploads WHERE id = ?',id);
+   if(!row)return err('找不到素材。',404);
+   const live=this.snapshot('live');
+   if(Object.values(live.data.slides?.uploads||{}).some(asset=>asset.id===id))return json(JSON.parse(row.metadata));
+  }
   const raw=request.headers.get('X-Arrow-Session');
   if(!validHash(raw))return err('請重新登入教師版。',401);
   const token=await hash(raw);
@@ -102,6 +111,17 @@ export class ArrowWorkspace {
    return session&&same(session.credential,this.credential(session.role))?session.role:'';
   };
   const role=authorized();if(!role)return err('請重新登入教師版。',401);
+  if(op.startsWith('/media-access/')&&method==='GET'){
+   const row=this.select('SELECT metadata FROM media_uploads WHERE id = ?',op.slice('/media-access/'.length));
+   return row?json(JSON.parse(row.metadata)):err('找不到素材。',404);
+  }
+  if(op==='/media-register'&&method==='POST'){
+   try{
+    const asset=uploadTools.metadata(JSON.parse(await read(request,4096)));
+    this.sql.exec('INSERT INTO media_uploads (id,metadata) VALUES (?,?)',asset.id,JSON.stringify(asset));
+    return json({ok:true});
+   }catch{return err('無法登錄素材。',400);}
+  }
   if(op==='/session'&&method==='GET')return json({role});
   if(op==='/logout'&&method==='POST'){this.sql.exec('DELETE FROM sessions WHERE token = ?',token);return json({ok:true});}
   const state=()=>{
@@ -117,6 +137,10 @@ export class ArrowWorkspace {
     input=JSON.parse(await read(request,680000));
     if(!Number.isSafeInteger(input.revision))throw Error('No revision');
     if(op==='/draft')data=validateContent(input.data);
+    for(const asset of Object.values(data?.slides?.uploads||{})){
+     const row=this.select('SELECT metadata FROM media_uploads WHERE id = ?',asset.id);
+     if(!row||JSON.stringify(uploadTools.metadata(JSON.parse(row.metadata)))!==JSON.stringify(asset))throw Error('Unknown upload');
+    }
    }catch{return err('標註或版本資料不正確。',400);}
    return this.ctx.storage.transactionSync(()=>{
     if(!authorized())return err('請重新登入教師版。',401);
@@ -148,7 +172,10 @@ export async function teacherArrows(request,env){
   ...init,headers:{...(init.headers||{}),...(validSession?{'X-Arrow-Session':cookie}:{})}
  });
  if(path==='/api/arrows/published'&&method==='GET')return internal('/published');
+ if(path.startsWith('/api/arrows/media/')&&['GET','HEAD'].includes(method))
+  return serveMedia(request,env,internal,path.slice('/api/arrows/media/'.length));
  if(method==='POST'&&request.headers.get('Origin')!==url.origin)return err('請從原網站操作。',403);
+ if(path==='/api/arrows/media'&&method==='POST')return uploadMedia(request,env,internal);
  if(path==='/teacher/login'&&method==='POST'){
   if(!request.headers.get('Content-Type')?.startsWith('application/x-www-form-urlencoded'))return loginPage('請使用登入表單。',400);
   let password;try{password=new URLSearchParams(await read(request,2048)).get('password');}catch{return loginPage('登入資料不正確。',400);}
@@ -169,10 +196,10 @@ export async function teacherArrows(request,env){
   const nonce=hex(crypto.getRandomValues(new Uint8Array(16)));
   const source=(await base.text()).replaceAll('<script>','<script nonce="'+nonce+'">');
   const boot='<base href="/"><script nonce="'+nonce+'">window.TeacherArrowManifest='+serialize(manifest)+
-   ';window.TeacherArrowInitial='+serialize(await draft.json())+';</script><script src="/teacher/content.js"></script><script src="/teacher/editor.js"></script><script src="/teacher/online.js"></script>';
+   ';window.TeacherArrowInitial='+serialize(await draft.json())+';</script><script src="/teacher/uploads.js"></script><script src="/teacher/content.js"></script><script src="/teacher/editor.js"></script><script src="/teacher/online.js"></script>';
   return html(source.replace('</head>',boot+'</head>'),200,"default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; img-src 'self' data: blob:; connect-src 'self'");
  }
- if(['/teacher/content.js','/teacher/editor.js','/teacher/online.js'].includes(path)&&method==='GET'){
+ if(['/teacher/content.js','/teacher/editor.js','/teacher/online.js','/teacher/uploads.js'].includes(path)&&method==='GET'){
   if(!validSession||!(await internal('/session')).ok)return err('請登入教師版。',401);
   const file=await env.ASSETS.fetch(new Request(url.origin+path));
   return new Response(file.body,{status:file.status,headers:{...headers,'Content-Type':'text/javascript; charset=utf-8'}});

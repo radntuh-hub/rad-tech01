@@ -1,6 +1,7 @@
 (() => {
  'use strict';
- const blank=()=>({text:{},layout:{},styles:{},imageArrows:{},boxes:{},media:{}});
+ const uploadTools=typeof module==='object'?require('./upload-model.js'):window.TeachingUploadModel;
+ const blank=()=>({text:{},layout:{},styles:{},imageArrows:{},boxes:{},media:{},uploads:{}});
  const record=o=>o&&typeof o==='object'&&!Array.isArray(o);
  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
  const within=(x,a,b)=>Number.isFinite(x)&&x>=a&&x<=b;
@@ -12,9 +13,12 @@
  function validate(value,pages){
   const out=blank();if(value===undefined)return out;
   if(!record(value))throw Error('投影片編輯資料格式不正確。');
+  out.uploads=uploadTools.placements(value.uploads,pages);
+  pages=uploadTools.extend({pages},out.uploads).pages;
   let total=0;
   const target=id=>typeof id==='string'&&id.match(/^([a-z]+\/[1-9]\d?):(?:(text|image|video):(\d{1,3})|(box):([a-z0-9-]{1,64}))$/i);
   for(const group of Object.keys(out)){
+   if(group==='uploads')continue;
    if(['imageArrows','boxes','media'].includes(group)&&value[group]===undefined)continue;
    if(!record(value[group]))throw Error('投影片編輯資料格式不正確。');
    const entries=Object.entries(value[group]);
@@ -23,12 +27,14 @@
     if(group==='imageArrows'){
      const {image,x1,y1,x2,y2,color}=item||{},match=target(image);
      if(!/^[a-z0-9-]{1,64}$/i.test(id)||!match||match[2]!=='image'||!Object.hasOwn(pages,match[1])||
+      (Number(match[3])>=100&&!Object.hasOwn(out.uploads,image))||
       ![x1,y1,x2,y2].every(n=>within(n,0,1))||Math.hypot(x2-x1,y2-y1)<.001||
       typeof color!=='string'||!/^#[a-f0-9]{6}$/i.test(color))throw Error('圖片箭頭的位置或顏色不正確。');
      out.imageArrows[id]={image,x1,y1,x2,y2,color};continue;
     }
     const match=target(id);
     if(!match||!Object.hasOwn(pages,match[1])||(!['layout','media'].includes(group)&&match[2]!=='text'&&match[4]!=='box')||
+     (['image','video'].includes(match[2])&&Number(match[3])>=100&&!Object.hasOwn(out.uploads,id))||
      (match[4]==='box'&&!Object.hasOwn(value.boxes||{},id)))
      throw Error('投影片或項目代號不正確。');
     if(group==='media'){
@@ -81,6 +87,7 @@
   if(total>90000)throw Error('草稿文字過長。');
   if(!Object.keys(out.boxes).length)delete out.boxes;
   if(!Object.keys(out.media).length)delete out.media;
+  if(!Object.keys(out.uploads).length)delete out.uploads;
   return out;
  }
  const nonempty=state=>Object.values(state).some(group=>Object.keys(group).length);
@@ -106,7 +113,11 @@
    [...article.querySelectorAll('.viewer')].forEach((node,i)=>add(node,'video',i));
    onPage.set(article,list);
   }
-  let state=blank();
+  let state=blank(),mediaHooks=null;
+  const originals=new Map([...items].filter(([,item])=>['image','video'].includes(item.kind)).map(([id,item])=>[id,{
+   image:item.node.querySelector('img')?.dataset.image,series:item.node.dataset.series,initial:item.node.dataset.initial
+  }]));
+  const applied=new Map();
   const modified=new Set();
   function resizeMedia(item){
    if(!['image','video'].includes(item.kind))return;
@@ -145,7 +156,7 @@
   }
   function syncBoxes(){
    for(const [id,item] of items){
-    if(item.added&&!Object.hasOwn(state.boxes||{},id)){
+    if(item.added&&!item.uploaded&&!Object.hasOwn(state.boxes||{},id)){
      item.node.remove();items.delete(id);onPage.set(item.article,onPage.get(item.article).filter(row=>row!==item));
     }
    }
@@ -162,6 +173,29 @@
     item.node.style.left=box.x*100+'%';item.node.style.top=box.y*100+'%';item.node.style.width=box.width*100+'%';
    }
    for(const article of onPage.keys())article.classList.toggle('deck-has-boxes',onPage.get(article).some(item=>item.added));
+  }
+  function syncUploads(){
+   if(!mediaHooks)return;
+   const uploads=state.uploads||{};
+   for(const [id,item] of [...items]){
+    if(item.uploaded&&!uploads[id]){
+     mediaHooks.remove(item);item.node.remove();items.delete(id);applied.delete(id);
+     onPage.set(item.article,onPage.get(item.article).filter(row=>row!==item));
+    }
+   }
+   for(const id of new Set([...applied.keys(),...Object.keys(uploads)])){
+    const asset=uploads[id],stamp=JSON.stringify(asset||null);if(applied.get(id)===stamp)continue;
+    let item=items.get(id);
+    if(!item&&asset){
+     const [page,kind,index]=id.split(':'),article=[...onPage.keys()].find(a=>a.dataset.case+'/'+a.dataset.pageInCase===page);
+     if(!article||Number(index)<100)continue;
+     const node=mediaHooks.create(kind,article,index);
+     item={id,node,kind,article,movable:true,added:true,uploaded:true};items.set(id,item);onPage.get(article).push(item);
+     node.querySelector(kind==='image'?'img':'video').addEventListener(kind==='image'?'load':'loadedmetadata',refresh);
+    }
+    if(!item)continue;
+    mediaHooks.apply(item,asset,originals.get(id));applied.set(id,stamp);
+   }
   }
   function paintItem(item){
    const {id,node,kind}=item,s=state.styles[id];
@@ -264,8 +298,8 @@
    if(link)link.textContent=chapter.titles[i];
   }
   function replace(value){
-   const next=validate(value,pages),currentKeys=new Set([next.text,next.layout,next.styles,next.boxes||{},next.media||{}].flatMap(group=>Object.keys(group)));
-   state=next;syncBoxes();
+   const next=validate(value,pages),currentKeys=new Set([next.text,next.layout,next.styles,next.boxes||{},next.media||{},next.uploads||{}].flatMap(group=>Object.keys(group)));
+   state=next;syncBoxes();syncUploads();
    for(const id of new Set([...modified,...currentKeys])){
     const item=items.get(id);if(!item)continue;
     paintItem(item);if(item.node.tagName==='H1')title(item);
@@ -275,7 +309,7 @@
   }
   window.addEventListener('resize',refresh);
   document.addEventListener('deck:slide',refresh);
-  return {items,onPage,replace,place,pictureBox,paintPicture,zoom,cropFor,refreshZoom:()=>zoomRefresh?.(),get state(){return state;},get changes(){return nonempty(state)?state:undefined;}};
+  return {items,onPage,replace,place,pictureBox,paintPicture,zoom,cropFor,setMediaHooks(hooks){mediaHooks=hooks;syncUploads();refresh();},refreshZoom:()=>zoomRefresh?.(),get state(){return state;},get changes(){return nonempty(state)?state:undefined;}};
  }
  const api={blank,validate,nonempty,scaledWidth,mount};
  if(typeof module==='object')module.exports=api;
