@@ -234,7 +234,7 @@
   arrowColor.onchange=()=>{if(arrowMenu.value)update(next=>{next.imageArrows[arrowMenu.value].color=arrowColor.value;});};
   removeArrow.onclick=()=>{if(arrowMenu.value)update(next=>{delete next.imageArrows[arrowMenu.value];});};
   main.addEventListener('click',e=>{
-   if(panel.hidden||e.target.closest('.viewer,.course-feedback,.refs,.deck-selection-tools'))return;
+   if(panel.hidden||e.target.closest('.viewer,.course-feedback a,.refs,.deck-selection-tools'))return;
    if(suppressClick){suppressClick=false;e.preventDefault();e.stopPropagation();return;}
    const items=deck.onPage.get(active())||[];
    const candidates=items.filter(item=>item.node.contains(e.target));
@@ -247,7 +247,7 @@
   },true);
   // Select on pointerdown so the browser can place the caret during the same click.
   main.addEventListener('pointerdown',e=>{
-   if(panel.hidden||moving||drawing||e.target.closest('.viewer,.course-feedback,.refs,.deck-selection-tools'))return;
+   if(panel.hidden||moving||drawing||e.target.closest('.viewer,.course-feedback a,.refs,.deck-selection-tools'))return;
    const item=(deck.onPage.get(active())||[]).find(item=>item.kind==='text'&&item.node.contains(e.target));
    if(item&&item!==selected)choose(item);
   },true);

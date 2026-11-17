@@ -92,6 +92,12 @@
  }
  const nonempty=state=>Object.values(state).some(group=>Object.keys(group).length);
  const selector='h1,h2,h3,h4,p,li,th,td,figcaption,legend,summary,dt,dd,strong,em';
+ function editableTexts(article){
+  const existing=[...article.querySelectorAll(selector)].filter(node=>!node.children.length&&node.textContent.trim()&&
+   !node.closest('.eyebrow,.viewer,.refs,.feedback,.course-feedback,button,a,template'));
+  // Append newly editable notices so existing saved text IDs never shift.
+  return [...existing,...[...article.querySelectorAll('.course-feedback p')].filter(node=>!node.children.length&&node.textContent.trim())];
+ }
  const custom=['--deck-edit-size','--deck-edit-color','--deck-edit-weight','--deck-edit-x','--deck-edit-y'];
  const scaledWidth=(base,available,percent)=>Math.min(base*percent/100,available);
  function mount(chapters){
@@ -103,12 +109,10 @@
    const list=[];
    function add(node,kind,i){
     const item={id:page+':'+kind+':'+i,node,kind,article,original:kind==='text'?node.textContent:null,
-     movable:kind!=='video'&&(kind==='image'||!node.closest('table, figure, button, a, summary, fieldset, strong, em'))};
+     movable:kind!=='video'&&(kind==='image'||!node.closest('table, figure, button, a, summary, fieldset, strong, em, .course-feedback'))};
     items.set(item.id,item);list.push(item);return item;
    }
-   [...article.querySelectorAll(selector)].filter(node=>!node.children.length&&node.textContent.trim()&&
-    !node.closest('.eyebrow,.viewer,.refs,.feedback,.course-feedback,button,a,template'))
-    .forEach((node,i)=>add(node,'text',i));
+   editableTexts(article).forEach((node,i)=>add(node,'text',i));
    [...article.querySelectorAll('figure')].filter(node=>node.querySelector('img[data-image]')).forEach((node,i)=>add(node,'image',i));
    [...article.querySelectorAll('.viewer')].forEach((node,i)=>add(node,'video',i));
    onPage.set(article,list);
@@ -311,7 +315,7 @@
   document.addEventListener('deck:slide',refresh);
   return {items,onPage,replace,place,pictureBox,paintPicture,zoom,cropFor,setMediaHooks(hooks){mediaHooks=hooks;syncUploads();refresh();},refreshZoom:()=>zoomRefresh?.(),get state(){return state;},get changes(){return nonempty(state)?state:undefined;}};
  }
- const api={blank,validate,nonempty,scaledWidth,mount};
+ const api={blank,validate,nonempty,scaledWidth,editableTexts,mount};
  if(typeof module==='object')module.exports=api;
  else window.TeachingSlideEdits=api;
 })();
